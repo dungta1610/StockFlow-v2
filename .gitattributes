@@ -1,0 +1,5 @@
+# Keep LF everywhere: migration checksums, shell commands in containers and
+# lockfiles must not change with the platform that checked them out.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

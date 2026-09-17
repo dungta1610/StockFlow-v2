@@ -46,7 +46,10 @@ export async function runMigrations(databaseUrl: string, dir: string): Promise<M
     const result: MigrationResult = { applied: [], skipped: [] };
     for (const file of files) {
       const sql = await readFile(join(dir, file), 'utf8');
-      const checksum = createHash('sha256').update(sql).digest('hex');
+      // Line endings are normalised so a CRLF checkout does not look like an edit.
+      const checksum = createHash('sha256')
+        .update(sql.replace(/\r\n/g, '\n'))
+        .digest('hex');
 
       if (done.has(file)) {
         const recorded = done.get(file);

@@ -53,6 +53,21 @@ describe('migration runner', () => {
     await expect(runMigrations(process.env.DATABASE_URL!, dir)).resolves.toMatchObject({ applied: [] });
   });
 
+  it('does not treat a CRLF checkout of an applied migration as an edit', async () => {
+    const eol = '999_migrate_spec_eol.sql';
+    const lf = 'CREATE TABLE public.migrate_spec_eol (\n  id int\n);\n';
+    await writeFile(join(dir, eol), lf);
+    try {
+      await runMigrations(process.env.DATABASE_URL!, dir);
+      await writeFile(join(dir, eol), lf.replace(/\n/g, '\r\n'));
+      await expect(runMigrations(process.env.DATABASE_URL!, dir)).resolves.toMatchObject({ applied: [] });
+    } finally {
+      await rm(join(dir, eol), { force: true });
+      await pg.query('DROP TABLE IF EXISTS public.migrate_spec_eol');
+      await pg.query('DELETE FROM public.schema_migrations WHERE name = $1', [eol]);
+    }
+  });
+
   it('rolls back a failing migration and does not record it', async () => {
     const bad = '998_migrate_spec_broken.sql';
     const badDir = await mkdtemp(join(tmpdir(), 'sf-migrate-bad-'));
