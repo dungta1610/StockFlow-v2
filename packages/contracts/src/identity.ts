@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pagingQuerySchema } from './common';
+import { pagingQuerySchema, queryBoolSchema, uuidSchema } from './common';
 
 // JSON field names are snake_case, matching StockFlow's (Go) API.
 
@@ -9,7 +9,6 @@ export const roleSchema = z.enum(['buyer', 'buyer_admin', 'ops', 'ops_admin']);
 const email = z.string().trim().toLowerCase().pipe(z.email());
 const password = z.string().min(1);
 const trimmed = (max: number) => z.string().trim().min(1).max(max);
-const queryBool = z.enum(['true', 'false']).transform((v) => v === 'true');
 
 // ── Auth ─────────────────────────────────────────────────────────────
 
@@ -81,7 +80,7 @@ export const createUserRequestSchema = z.object({
   /** Plain text; hashed by the server. (StockFlow accepted a client-side hash.) */
   password,
   full_name: trimmed(200),
-  org_id: z.uuid(),
+  org_id: uuidSchema,
   role: roleSchema,
 });
 export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
@@ -93,7 +92,7 @@ export const updateUserRequestSchema = z.object({
   password: password.optional(),
   is_active: z.boolean().optional(),
   /** Which membership the role applies to, when the user has several in scope. */
-  org_id: z.uuid().optional(),
+  org_id: uuidSchema.optional(),
 });
 export type UpdateUserRequest = z.infer<typeof updateUserRequestSchema>;
 
@@ -102,7 +101,7 @@ export const listUsersQuerySchema = pagingQuerySchema.extend({
   email: z.string().trim().toLowerCase().optional(),
   full_name: z.string().trim().optional(),
   role: roleSchema.optional(),
-  is_active: queryBool.optional(),
-  org_id: z.uuid().optional(),
+  is_active: queryBoolSchema.optional(),
+  org_id: uuidSchema.optional(),
 });
 export type ListUsersQuery = z.infer<typeof listUsersQuerySchema>;

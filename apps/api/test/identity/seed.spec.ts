@@ -1,4 +1,5 @@
 import { SEED_USERS, SeedRefusedError, runSeed } from '../../src/cli/seed';
+import { SEED_PRICE_LISTS, SEED_PRODUCTS, SEED_WAREHOUSES } from '../../src/cli/seed-catalog';
 import { withDb } from '../helpers/identity-fixtures';
 
 describe('seed', () => {
@@ -42,6 +43,39 @@ describe('seed', () => {
         'SELECT user_id FROM commerce.org_members GROUP BY user_id HAVING count(*) > 1',
       );
       expect(multi.rows).toHaveLength(1);
+    });
+  });
+
+  it('seeds a catalog whose two contracts price the same SKU differently', async () => {
+    const env = { SEED_ALLOW: 'true', NODE_ENV: 'development' };
+    await runSeed(url(), env);
+    await runSeed(url(), env);
+
+    await withDb(async (pg) => {
+      const count = async (table: string) =>
+        (await pg.query(`SELECT count(*)::int AS n FROM commerce.${table}`)).rows[0].n;
+      expect(await count('products')).toBe(SEED_PRODUCTS.length);
+      expect(SEED_PRODUCTS).toHaveLength(20);
+      expect(await count('warehouses')).toBe(SEED_WAREHOUSES.length);
+      expect(await count('price_lists')).toBe(SEED_PRICE_LISTS.length);
+
+      // A SKU covered by both contracts, first tier: each buyer sees its own price.
+      const { rows } = await pg.query(
+        `SELECT o.code, i.unit_price
+           FROM commerce.price_list_items i
+           JOIN commerce.price_lists l ON l.id = i.price_list_id
+           JOIN commerce.organizations o ON o.id = l.org_id
+           JOIN commerce.products p ON p.id = i.product_id
+          WHERE p.sku = 'MARKER-WB-02' AND i.min_qty = 1
+          ORDER BY o.code`,
+      );
+      expect(rows.map((r) => r.code)).toEqual(['BUYER-A', 'BUYER-B']);
+      expect(rows[0].unit_price).not.toBe(rows[1].unit_price);
+
+      const tiers = await pg.query(
+        'SELECT DISTINCT min_qty FROM commerce.price_list_items WHERE min_qty > 1 ORDER BY min_qty',
+      );
+      expect(tiers.rows.length).toBeGreaterThan(0);
     });
   });
 });

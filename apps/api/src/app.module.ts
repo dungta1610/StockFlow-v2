@@ -1,8 +1,10 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { CatalogModule } from './modules/catalog/catalog.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { JwtAuthGuard } from './modules/identity/http/jwt-auth.guard';
 import { RolesGuard } from './modules/identity/http/roles.guard';
+import { PricingModule } from './modules/pricing/pricing.module';
 import { ConfigModule } from './platform/config/config.module';
 import { DatabaseModule } from './platform/database/database.module';
 import { HealthModule } from './platform/health/health.module';
@@ -12,7 +14,16 @@ import { RateLimitModule } from './platform/ratelimit/ratelimit.module';
 import { RedisModule } from './platform/redis/redis.module';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, RedisModule, RateLimitModule, HealthModule, IdentityModule],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    RedisModule,
+    RateLimitModule,
+    HealthModule,
+    IdentityModule,
+    CatalogModule,
+    PricingModule,
+  ],
   providers: [
     // Global guards run in this order: a flood is rejected before any token work,
     // and roles are checked only once the caller is known. Routes are private

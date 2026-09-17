@@ -32,3 +32,20 @@ export interface PagingMeta {
   page: number;
   limit: number;
 }
+
+/**
+ * A UUID in canonical lower case. Postgres returns ids in lower case, so an id that
+ * is compared or used as a map key in application code must be lower case too.
+ */
+export const uuidSchema = z.uuid().transform((id) => id.toLowerCase());
+
+/** Query-string boolean: exactly "true" or "false". */
+export const queryBoolSchema = z.enum(['true', 'false']).transform((v) => v === 'true');
+
+/**
+ * A money amount as a decimal string with at most two decimals, e.g. "125000.00".
+ * Amounts are never JSON numbers: floating point cannot represent them exactly.
+ */
+export const moneySchema = z
+  .string()
+  .regex(/^\d{1,16}(\.\d{1,2})?$/, 'must be a decimal string with at most 2 decimals');

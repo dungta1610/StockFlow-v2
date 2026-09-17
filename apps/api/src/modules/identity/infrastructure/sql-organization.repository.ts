@@ -9,7 +9,8 @@ import { IdentityErrors } from '../domain/errors';
 import type { OrgScope } from '../domain/org-scope';
 import type { Organization } from '../domain/organization';
 import type { OrgType } from '../domain/role';
-import { isUniqueViolation, pagingSql, scopeSql } from './scope-sql';
+import { isUniqueViolation, pagingSql } from '../../../platform/database/sql';
+import { scopeSql } from './scope-sql';
 
 interface OrgRow {
   id: string;

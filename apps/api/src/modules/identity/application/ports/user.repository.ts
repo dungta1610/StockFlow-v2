@@ -1,12 +1,10 @@
+import type { Paging } from '../../../../platform/database/sql';
 import type { Tx } from '../../../../platform/database/tx';
 import type { OrgScope } from '../../domain/org-scope';
 import type { OrgType, Role } from '../../domain/role';
 import type { Membership, User } from '../../domain/user';
 
-export interface Paging {
-  page: number;
-  limit: number;
-}
+export type { Paging } from '../../../../platform/database/sql';
 
 /** StockFlow's user Filter, plus an organisation filter. */
 export interface UserFilter {

@@ -1,10 +1,12 @@
 import { hash } from '@node-rs/argon2';
 import { Client } from 'pg';
+import { SEED_PRICE_LISTS, SEED_PRODUCTS, SEED_WAREHOUSES, seedCatalog } from './seed-catalog';
 
 /**
  * Demo tenants for local development: one internal (supplier) organisation, two
  * buyer organisations, one account per role, and one distributor account that
- * belongs to both buyers (exercises the org_code choice at login).
+ * belongs to both buyers (exercises the org_code choice at login), plus the demo
+ * catalog and price lists (see seed-catalog.ts).
  *
  * Every account shares SEED_PASSWORD. Because those credentials are well known, the
  * seed refuses to run unless SEED_ALLOW=true and never runs in production.
@@ -81,6 +83,7 @@ export async function runSeed(databaseUrl: string, env: SeedEnv): Promise<{ pass
         );
       }
     }
+    await seedCatalog(pg, orgIds);
     await pg.query('COMMIT');
     return { password };
   } catch (err) {
@@ -96,6 +99,9 @@ export async function seedCli(): Promise<void> {
   if (!databaseUrl) throw new Error('DATABASE_URL is required');
   const { password } = await runSeed(databaseUrl, process.env);
   console.log(`seed: ${SEED_ORGS.length} organisations, ${SEED_USERS.length} accounts (password: ${password})`);
+  console.log(
+    `seed: ${SEED_PRODUCTS.length} products, ${SEED_WAREHOUSES.length} warehouses, ${SEED_PRICE_LISTS.length} price lists`,
+  );
   for (const u of SEED_USERS) {
     console.log(`  ${u.email.padEnd(30)} ${u.memberships.map(([o, r]) => `${o}:${r}`).join(', ')}`);
   }

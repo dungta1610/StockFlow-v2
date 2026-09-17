@@ -1,7 +1,7 @@
 ---
 phase: 2
 title: "Catalog, Warehouse & Pricing"
-status: pending
+status: completed
 priority: P1
 dependencies: [1]
 ---
@@ -181,15 +181,31 @@ create index on price_lists (org_id, status, valid_from desc);
 
 ## Success Criteria
 
-- [ ] 12 test ở §Tests First xanh.
-- [ ] Resolve 3 item và 20 item tốn **cùng** số query, và ≤ 2.
-- [ ] Buyer org A thấy giá của A; org B thấy giá của B; khác nhau thật trong seed.
-- [ ] Ops resolve được giá cho bất kỳ buyer org nào; buyer không resolve được cho org khác.
-- [ ] Product ngoài mọi bảng giá ⇒ `base_price`, không ném lỗi.
-- [ ] `grep -rnE "(price|amount|total|subtotal)\s*:\s*number" apps/api/src packages/ apps/web/src` ⇒ rỗng.
-- [ ] DB từ chối currency ≠ `VND`.
-- [ ] Không có file nào tên `chain-price-resolver.ts` (chain đã bỏ).
-- [ ] ADR 0010, 0011 tồn tại; 0011 nêu rõ vì sao port ở lại mà chain thì không.
+- [x] 12 test ở §Tests First xanh (gom thành 7 file, xem bảng dưới).
+- [x] Resolve 1 item và 20 item tốn **cùng** số query, và ≤ 2.
+- [x] Buyer org A thấy giá của A; org B thấy giá của B; khác nhau thật trong seed.
+- [x] Ops resolve được giá cho bất kỳ buyer org nào; buyer không resolve được cho org khác.
+- [x] Product ngoài mọi bảng giá ⇒ `base_price`, không ném lỗi.
+- [x] `grep -rniE "(price|amount|total|subtotal)\s*:\s*number" apps/api/src packages/*/src apps/web/src` ⇒ rỗng.
+- [x] DB từ chối currency ≠ `VND`.
+- [x] Không có file nào tên `chain-price-resolver.ts` (chain đã bỏ).
+- [x] ADR 0010, 0011 tồn tại; 0011 nêu rõ vì sao port ở lại mà chain thì không.
+
+## Thực tế đã build (2026-09-18)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Migration | `003_catalog.sql` (products, warehouses; CHECK code đã normalize), `004_pricing.sql` (price_lists với FK tổng hợp `(org_id, org_type)` → chỉ buyer có bảng hợp đồng; `chk_price_list_validity`) |
+| Catalog | `modules/catalog` — product + warehouse CRUD (create/get/list/update), `CatalogService` (`findProductBySku`, `findWarehouseByCode`, `findProducts`, `findWarehouse`) là bề mặt duy nhất cho module khác |
+| Pricing | `Money` (bigint minor units), `pickPrice` thuần, port `PriceResolver` + `SqlPriceResolver` (2 query), price-list CRUD + upsert tier + archive, `POST /pricing/quote` |
+| API | `/products`, `/warehouses` (đọc: mọi user; ghi: ops_admin) · `/price-lists` (đọc: ops; ghi: ops_admin; buyer 403) · `POST /pricing/quote` (buyer: org mình; ops: bắt buộc `customer_org_id`) |
+| Seed | 20 SKU văn phòng phẩm, 2 kho (HN-01, HCM-01), bảng chuẩn (95%/92% từ 100), An Phát (90/86/82%), Bình Minh (88/80%) — idempotent |
+| Test | `money`, `pick-price`, `price-resolver`, `pricing-constraints`, `pricing-api`, `products-api`, `warehouses-api`, seed mở rộng — toàn bộ 271+ test xanh |
+| Docs | ADR 0010, 0011; `code-standards.md` §Money |
+
+**Sau review (2026-09-18):** sửa lỗi id sản phẩm viết hoa bị báo `PRODUCT_NOT_FOUND` (contracts chuẩn hoá UUID về chữ thường; resolver/use case chuẩn hoá lại); đọc price list có `OrgScope`; `Money.parse` ném `400 INVALID_AMOUNT`; tier `min_qty < 1`/trùng ở tầng use case ⇒ 400; buyer không thấy sản phẩm ngưng bán; seed dùng chuỗi tiền; grep gate không phân biệt hoa thường. Quyết định: dòng đơn hàng (Phase 04) **chép** đơn giá, `price_list_item_id` chỉ để truy vết. Chưa sửa (Low, ghi nhận): `Money` nằm trong pricing nên catalog import ngược; identity export cả `OrganizationRepository`; `Money.times` chưa chặn vượt `numeric(18,2)` — xử lý ở Phase 04 khi lưu tổng đơn. Báo cáo: `reports/code-reviewer-260918-phase-02-catalog-pricing-review.md`.
+
+**Lệch so với spec (có chủ đích, ghi trong ADR 0011):** resolver trả mảng theo thứ tự request thay vì `Map`; nhận `customer {id, type}` và `Tx` tường minh; product không tồn tại/ngưng bán ⇒ lỗi cả request; `price` của Go đổi tên thành `base_price`; bảng giá chỉ archive, không xoá; query 1 là products (qua `CatalogService`), query 2 là tier.
 
 ## Risk Assessment
 

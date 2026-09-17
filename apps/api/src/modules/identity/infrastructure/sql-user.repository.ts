@@ -11,7 +11,8 @@ import { IdentityErrors } from '../domain/errors';
 import type { OrgScope } from '../domain/org-scope';
 import type { OrgType, Role } from '../domain/role';
 import type { Membership, User } from '../domain/user';
-import { isUniqueViolation, pagingSql, scopeSql } from './scope-sql';
+import { escapeLike, isUniqueViolation, pagingSql, paramBinder } from '../../../platform/database/sql';
+import { scopeSql } from './scope-sql';
 
 interface UserRow {
   id: string;
@@ -76,10 +77,7 @@ export class SqlUserRepository extends UserRepository {
   async list(tx: Tx, scope: OrgScope, filter: UserFilter, paging: Paging): Promise<User[]> {
     const params: unknown[] = [];
     const where = [scopeSql(scope, { id: 'o.id', type: 'o.type' }, params)];
-    const bind = (value: unknown) => {
-      params.push(value);
-      return `$${params.length}`;
-    };
+    const bind = paramBinder(params);
     // Same filters as StockFlow's ListUsers: exact email, partial name, role, is_active.
     if (filter.email) where.push(`u.email = ${bind(filter.email)}`);
     if (filter.fullName) where.push(`u.full_name ILIKE ${bind(`%${escapeLike(filter.fullName)}%`)}`);
@@ -188,6 +186,3 @@ export class SqlUserRepository extends UserRepository {
     ]);
   }
 }
-
-/** Treat % and _ in user input literally inside ILIKE. */
-const escapeLike = (s: string): string => s.replace(/[\\%_]/g, (c) => `\\${c}`);

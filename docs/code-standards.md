@@ -42,6 +42,11 @@ StockFlow (Go) used:
 - Postgres: `numeric(18,2)`. Application: integer minor units. **Never a JS `number` with a
   fractional part for money**, in the API, the web app, or `packages/contracts`.
 - v1 has a single currency, enforced by a `CHECK` constraint.
+- Amounts cross the API as decimal strings (`moneySchema`, `"65000.50"`); inside the API
+  they are `Money` values, built only with `Money.parse` (input) or `Money.fromDb`
+  (`numeric` columns). See ADR 0010.
+- Prices a buyer pays come only from `PriceResolver`; a price in a request body is ignored.
+  See ADR 0011.
 
 ## 5. Tenancy
 
