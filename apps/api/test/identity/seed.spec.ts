@@ -1,0 +1,47 @@
+import { SEED_USERS, SeedRefusedError, runSeed } from '../../src/cli/seed';
+import { withDb } from '../helpers/identity-fixtures';
+
+describe('seed', () => {
+  const url = () => process.env.DATABASE_URL!;
+
+  it('refuses to run unless SEED_ALLOW=true', async () => {
+    await expect(runSeed(url(), { SEED_ALLOW: undefined, NODE_ENV: 'development' })).rejects.toBeInstanceOf(
+      SeedRefusedError,
+    );
+    await expect(runSeed(url(), { SEED_ALLOW: 'yes', NODE_ENV: 'development' })).rejects.toBeInstanceOf(
+      SeedRefusedError,
+    );
+    const { rows } = await withDb((pg) => pg.query('SELECT count(*)::int AS n FROM commerce.users'));
+    expect(rows[0].n).toBe(0);
+  });
+
+  it('refuses to run in production even when allowed', async () => {
+    await expect(runSeed(url(), { SEED_ALLOW: 'true', NODE_ENV: 'production' })).rejects.toBeInstanceOf(
+      SeedRefusedError,
+    );
+  });
+
+  it('creates the demo tenants and can be run repeatedly', async () => {
+    const env = { SEED_ALLOW: 'true', NODE_ENV: 'development', SEED_PASSWORD: 'seed-password-1' };
+    await runSeed(url(), env);
+    await runSeed(url(), env);
+
+    await withDb(async (pg) => {
+      const orgs = await pg.query('SELECT code, type FROM commerce.organizations ORDER BY code');
+      expect(orgs.rows).toEqual([
+        { code: 'BUYER-A', type: 'buyer' },
+        { code: 'BUYER-B', type: 'buyer' },
+        { code: 'INTERNAL', type: 'internal' },
+      ]);
+      const users = await pg.query('SELECT count(*)::int AS n FROM commerce.users');
+      expect(users.rows[0].n).toBe(SEED_USERS.length);
+      // Every role is represented, and one account belongs to two organisations.
+      const roles = await pg.query('SELECT DISTINCT role FROM commerce.org_members ORDER BY role');
+      expect(roles.rows.map((r) => r.role)).toEqual(['buyer', 'buyer_admin', 'ops', 'ops_admin']);
+      const multi = await pg.query(
+        'SELECT user_id FROM commerce.org_members GROUP BY user_id HAVING count(*) > 1',
+      );
+      expect(multi.rows).toHaveLength(1);
+    });
+  });
+});

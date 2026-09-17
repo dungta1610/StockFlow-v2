@@ -1,0 +1,23 @@
+# LiteLLM proxy — the single LLM interface for the app (ported from AI-Harness).
+# App code only references the aliases below. Changing model or provider is an
+# edit here, never in application code.
+
+model_list:
+  # Chat — Claude Haiku 4.5 on AWS Bedrock.
+  - model_name: default-chat
+    litellm_params:
+      model: bedrock/global.anthropic.claude-haiku-4-5-20251001-v1:0
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+  # Embeddings — Cohere Embed Multilingual v3 on Bedrock (1024 dimensions).
+  # Changing this model means changing vector(N) in the ai schema and re-embedding.
+  - model_name: default-embed
+    litellm_params:
+      model: bedrock/cohere.embed-multilingual-v3
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+litellm_settings:
+  drop_params: true
