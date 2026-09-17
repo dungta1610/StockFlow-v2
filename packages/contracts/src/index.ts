@@ -3,5 +3,6 @@
 // Vite build can consume it from source.
 export * from './common';
 export * from './identity';
+export * from './inventory';
 export * from './catalog';
 export * from './pricing';

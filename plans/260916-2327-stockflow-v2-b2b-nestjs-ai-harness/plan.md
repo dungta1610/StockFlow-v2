@@ -44,7 +44,7 @@ Học sâu kiến trúc + AI. Thước đo là *mỗi thứ build ra dạy đư�
 | 00 | [Foundation, Platform & Spike](phase-00-foundation-and-bedrock-spike.md) | in-progress (spike chờ AWS credential) | P1 | — | 4–5 ngày |
 | 01 | [Identity, Auth, RBAC & OrgScope](phase-01-identity-auth-rbac.md) | **completed** | P1 | 00 | 4 ngày |
 | 02 | [Catalog, Warehouse & Pricing](phase-02-catalog-warehouse-pricing.md) | **completed** | P1 | 01 | 3 ngày |
-| 03 | [Inventory Core & Ledger](phase-03-inventory-core-ledger.md) | pending | P1 | 02 | 2 ngày |
+| 03 | [Inventory Core & Ledger](phase-03-inventory-core-ledger.md) | **completed** | P1 | 02 | 2 ngày |
 | 04 | [Ordering, Atomic Reservation & Lifecycle](phase-04-ordering-atomic-reservation.md) | pending | P1 | 02, 03 | 5 ngày |
 | 05 | [Outbox Relay, Scheduler & Audit](phase-05-outbox-relay-scheduler.md) | pending | P1 | 04 | 3 ngày |
 | 06 | ~~Payment (Simulated)~~ | **cancelled** | — | — | — |

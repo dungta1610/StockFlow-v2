@@ -83,7 +83,54 @@ function priceAt(base: string, percent: number): string {
   return Money.fromMinor(hundreds * 10_000n).toString();
 }
 
-export async function seedCatalog(pg: Client, orgIds: ReadonlyMap<string, { id: string }>): Promise<void> {
+/**
+ * Opening stock, so the ops console and the copilot have something to look at.
+ * Every row is paired with a ledger entry: no path may change stock without one.
+ * HN-01 carries the bulk; HCM-01 keeps less, and the last SKU is deliberately out
+ * of stock there.
+ */
+async function seedStock(
+  pg: Client,
+  productIds: ReadonlyMap<string, string>,
+  createdBy: string | null,
+): Promise<void> {
+  const warehouseIds = new Map<string, string>();
+  for (const w of SEED_WAREHOUSES) {
+    const { rows } = await pg.query<{ id: string }>('SELECT id FROM commerce.warehouses WHERE code = $1', [
+      w.code,
+    ]);
+    warehouseIds.set(w.code, rows[0]!.id);
+  }
+
+  for (const [index, p] of SEED_PRODUCTS.entries()) {
+    const quantities = { 'HN-01': 200 + index * 10, 'HCM-01': index === SEED_PRODUCTS.length - 1 ? 0 : 60 };
+    for (const [code, quantity] of Object.entries(quantities)) {
+      const inserted = await pg.query<{ id: string }>(
+        `INSERT INTO commerce.inventory (product_id, warehouse_id, available_qty, version)
+         VALUES ($1, $2, $3, 1)
+         ON CONFLICT (product_id, warehouse_id) DO NOTHING
+         RETURNING id`,
+        [productIds.get(p.sku), warehouseIds.get(code), quantity],
+      );
+      const inventoryId = inserted.rows[0]?.id;
+      if (inventoryId === undefined || quantity === 0) continue;
+      await pg.query(
+        `INSERT INTO commerce.inventory_transactions
+           (inventory_id, product_id, warehouse_id, txn_type, quantity,
+            before_available_qty, after_available_qty, before_reserved_qty, after_reserved_qty,
+            reason, created_by)
+         VALUES ($1, $2, $3, 'manual_adjustment', $4, 0, $4, 0, 0, 'tồn kho đầu kỳ', $5)`,
+        [inventoryId, productIds.get(p.sku), warehouseIds.get(code), quantity, createdBy],
+      );
+    }
+  }
+}
+
+export async function seedCatalog(
+  pg: Client,
+  orgIds: ReadonlyMap<string, { id: string }>,
+  opsAdminId: string | null,
+): Promise<void> {
   const productIds = new Map<string, string>();
   for (const p of SEED_PRODUCTS) {
     const { rows } = await pg.query<{ id: string }>(
@@ -133,4 +180,6 @@ export async function seedCatalog(pg: Client, orgIds: ReadonlyMap<string, { id: 
       }
     }
   }
+
+  await seedStock(pg, productIds, opsAdminId);
 }

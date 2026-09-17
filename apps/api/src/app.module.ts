@@ -2,6 +2,7 @@ import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common
 import { APP_GUARD } from '@nestjs/core';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { IdentityModule } from './modules/identity/identity.module';
+import { InventoryModule } from './modules/inventory/inventory.module';
 import { JwtAuthGuard } from './modules/identity/http/jwt-auth.guard';
 import { RolesGuard } from './modules/identity/http/roles.guard';
 import { PricingModule } from './modules/pricing/pricing.module';
@@ -23,6 +24,7 @@ import { RedisModule } from './platform/redis/redis.module';
     IdentityModule,
     CatalogModule,
     PricingModule,
+    InventoryModule,
   ],
   providers: [
     // Global guards run in this order: a flood is rejected before any token work,

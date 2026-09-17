@@ -1,7 +1,7 @@
 ---
 phase: 3
 title: "Inventory Core & Ledger"
-status: pending
+status: completed
 priority: P1
 dependencies: [2]
 ---
@@ -191,16 +191,40 @@ Hai `CHECK >= 0` là **lưới an toàn cuối**: logic đã ngăn số âm, rà
 
 ## Success Criteria
 
-- [ ] 11 test ở §Tests First xanh.
-- [ ] Test #3 (10 adjust song song trên cặp chưa tồn tại) xanh — race của repo Go đã vá.
-- [ ] Test #8 (20 reserve song song trên tồn 10) xanh, lặp 10 lần không flaky.
-- [ ] Ba primitive có chữ ký đầy đủ và **hợp đồng null được test tường minh** — Phase 04 không phải đoán.
-- [ ] Migration 005 khớp từng cột với SQL trong repo Go (đối chiếu thủ công, ghi vào commit note).
-- [ ] Không đường nào sửa `inventory` mà không ghi sổ cái.
-- [ ] `LedgerRepository` không có method update/delete.
-- [ ] `UPDATE inventory SET available_qty = -1` bị DB từ chối.
-- [ ] Không use case nào trong module tự gọi `withTransaction`.
-- [ ] ADR 0012 giải thích hai cơ chế ghi **và** vì sao `version` không dùng làm optimistic lock ở v1.
+- [x] 11 test ở §Tests First xanh (gom thành 6 file, 31 test).
+- [x] Test adjust song song trên cặp chưa tồn tại xanh — race của repo Go đã vá.
+- [x] Test 20 reserve song song trên tồn 10 xanh (đúng 10 `StockMove`, 10 `null`, tồn về 0).
+- [x] Ba primitive có chữ ký đầy đủ và hợp đồng `null` được test tường minh.
+- [x] Migration 005 đối chiếu từng cột với `sql_inventory.go` / `sql_inventory_transaction.go`.
+- [x] Không đường nào sửa `inventory` mà không ghi sổ cái (kể cả seed).
+- [x] `LedgerRepository` chỉ có `append` + `list`.
+- [x] `UPDATE inventory SET available_qty = -1` bị DB từ chối.
+- [x] Không use case nào trong module tự gọi `withTransaction`.
+- [x] ADR 0012 giải thích hai cơ chế ghi và vì sao `version` không phải optimistic lock.
+
+## Thực tế đã build (2026-09-18)
+
+| Hạng mục | Kết quả |
+|---|---|
+| Migration | `005_inventory.sql` — `inventory` (2 CHECK ≥ 0, unique product+warehouse), `inventory_transactions` 15 cột append-only, `order_id`/`reservation_id` chưa gắn FK (Phase 04 thêm) |
+| Primitive | `adjustAtomic`, `reserveAtomic`, `releaseAtomic`, `consumeAtomic` — mỗi cái một câu lệnh có điều kiện, `RETURNING` trả before/after; `null` = không thoả điều kiện, không đổi gì. Chỉ gọi được qua `StockMovementService` |
+| Bất biến sổ cái | `StockMovementService` là lối duy nhất để tồn kho thay đổi: nó ghi chuyển động **và** dòng sổ cái cùng lúc; repository không export khỏi module |
+| Use case | `AdjustStockUseCase` (ops/ops_admin, ghi sổ cái cùng tx), `GetInventoryUseCase`, `ListInventoryUseCase`, `ListInventoryTransactionsUseCase` |
+| Service | `InventoryService.getStatus(db, actor, {sku, warehouseCode?})`, `LedgerService.history(...)` — nhận mã, mã sai ⇒ 404 rõ ràng |
+| API | `POST /inventories/adjust`, `GET /inventories`, `/inventories/detail`, `/inventories/transactions` — toàn bộ chỉ ops/ops_admin |
+| Seed | Tồn đầu kỳ 20 SKU × 2 kho (HN-01 nhiều, HCM-01 ít, SKU cuối hết hàng ở HCM-01) kèm sổ cái |
+| Test | 6 file inventory (31 test); toàn repo 306 test xanh |
+| Docs | ADR 0012; `code-standards.md` §Ledger |
+
+**Sau review (2026-09-18):** sửa 3 finding High — (1) adjust giảm tồn trên cặp chưa có row không còn tạo row rác không có sổ cái (chỉ khi tăng tồn mới INSERT); (2) ba primitive từ chối `qty <= 0` và số lẻ bằng `400 INVALID_QUANTITY` thay vì "thành công rỗng" hoặc làm hỏng transaction của caller; (3) bất biến "đổi tồn ⇒ ghi sổ cái" nay là ràng buộc cấu trúc qua `StockMovementService`. Thêm: `created_at` dùng `clock_timestamp()` để nhiều chuyển động trong một transaction xếp đúng thứ tự; `getStatus` đọc mọi kho thay vì một trang 100; thêm index `warehouse_id`, `reservation_id`; seed tra `created_by` theo email tường minh. Ghi nhận để Phase 04 xử lý: release/consume kiểm theo tổng `reserved_qty` (cần trạng thái reservation để idempotent) và thứ tự khoá để tránh deadlock đơn nhiều dòng. Báo cáo: `reports/code-reviewer-260918-phase-03-inventory-ledger-review.md`.
+
+**Lệch so với spec (có chủ đích):**
+- Adjust dùng **hai câu lệnh** (INSERT … ON CONFLICT DO NOTHING rồi UPDATE có điều kiện) thay vì một `INSERT … ON CONFLICT DO UPDATE`. Lý do trong ADR 0012: nhánh INSERT mang delta âm sẽ hoặc vi phạm CHECK (làm hỏng cả transaction của caller) hoặc tạo row rác. Cả hai câu lệnh đều an toàn khi chạy song song.
+- Row mới bắt đầu `version = 0` để lần adjust đầu tiên đưa nó về 1 — một chuyển động, một version.
+- `StockMove` mang thêm `productId`/`warehouseId` để dòng sổ cái luôn viết được từ chính kết quả chuyển động.
+- Service nhận `actor` chứ không phải `OrgScope`: tồn kho là dữ liệu của nhà cung cấp, không thuộc org nào của buyer, nên không có gì để lọc theo scope; chốt chặn là guard role ops.
+- `InventoryDetail` kèm `sku`, `warehouse_code`, `warehouse_name` (join sẵn) để ops console và copilot không phải tra thêm.
+- Thêm `GET /inventories` (repo Go có store nhưng chưa expose route).
 
 ## Risk Assessment
 

@@ -61,7 +61,13 @@ StockFlow (Go) used:
 ## 6. Ledger
 
 - `inventory_transactions` is append-only: repositories expose no update or delete.
-- Every change to `inventory` writes a ledger row in the same transaction.
+- Every change to `inventory` writes a ledger row in the same transaction — including
+  the seed.
+- Stock moves only through `StockMovementService`, which writes the movement and its
+  ledger row together; the inventory repositories are module-internal.
+- Stock moves through single conditional statements that return the levels before and
+  after; a primitive returning `null` means the condition did not hold and **nothing
+  changed**. `version` is an audit counter, not an optimistic lock (ADR 0012).
 
 ## 7. Errors and responses
 

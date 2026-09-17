@@ -35,6 +35,9 @@ export const SEED_USERS: { email: string; fullName: string; memberships: [SeedOr
   },
 ];
 
+/** Opening stock is booked in this account's name. */
+const OPS_ADMIN_EMAIL = 'ops.admin@stockflow.local';
+
 export const DEFAULT_SEED_PASSWORD = 'ChangeMe-123!';
 
 export class SeedRefusedError extends Error {}
@@ -83,7 +86,10 @@ export async function runSeed(databaseUrl: string, env: SeedEnv): Promise<{ pass
         );
       }
     }
-    await seedCatalog(pg, orgIds);
+    const opsAdmin = await pg.query<{ id: string }>('SELECT id FROM commerce.users WHERE email = $1', [
+      OPS_ADMIN_EMAIL,
+    ]);
+    await seedCatalog(pg, orgIds, opsAdmin.rows[0]?.id ?? null);
     await pg.query('COMMIT');
     return { password };
   } catch (err) {

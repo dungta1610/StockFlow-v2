@@ -72,6 +72,23 @@ describe('seed', () => {
       expect(rows.map((r) => r.code)).toEqual(['BUYER-A', 'BUYER-B']);
       expect(rows[0].unit_price).not.toBe(rows[1].unit_price);
 
+      // Opening stock exists for every SKU in both warehouses, each with its ledger row.
+      const stock = await pg.query(
+        `SELECT count(*)::int AS rows, sum(available_qty)::int AS units FROM commerce.inventory`,
+      );
+      expect(stock.rows[0].rows).toBe(SEED_PRODUCTS.length * SEED_WAREHOUSES.length);
+      // Both warehouses are stocked except the last SKU in HCM-01, which is left empty.
+      const stockedPairs = SEED_PRODUCTS.length * SEED_WAREHOUSES.length - 1;
+      expect(stock.rows[0].units).toBeGreaterThan(0);
+      const moves = await pg.query(
+        `SELECT count(*)::int AS n, count(created_by)::int AS attributed
+           FROM commerce.inventory_transactions WHERE txn_type = 'manual_adjustment'`,
+      );
+      expect(moves.rows[0].n).toBe(stockedPairs);
+      expect(moves.rows[0].attributed).toBe(stockedPairs);
+      const empty = await pg.query(`SELECT count(*)::int AS n FROM commerce.inventory WHERE available_qty = 0`);
+      expect(empty.rows[0].n).toBe(1);
+
       const tiers = await pg.query(
         'SELECT DISTINCT min_qty FROM commerce.price_list_items WHERE min_qty > 1 ORDER BY min_qty',
       );
