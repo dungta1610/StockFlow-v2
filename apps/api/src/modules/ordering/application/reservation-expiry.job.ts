@@ -15,7 +15,7 @@ import { type ExpiryCursor, OrderRepository } from './ports/order.repository';
  * each order its own `withTransaction` call into `ExpireOrderUseCase` — the same
  * use case `POST /orders/:id/expire` uses, as `systemActor` (ops rights over every
  * buyer organisation). The order's row lock, taken inside that transaction, is the
- * claim: there is no intermediate "releasing" state, and no second connection ever
+ * claim: there is no in-between status to get stuck in, and no second connection ever
  * waits on a lock this sweep itself is holding — the failure mode a nested
  * transaction would create (docs/adr/0004).
  *

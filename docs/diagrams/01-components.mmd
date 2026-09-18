@@ -1,0 +1,66 @@
+%% Components of StockFlow v2 as built. Dashed boxes are planned (Phases 07-08) and do not exist yet.
+graph TB
+    subgraph Clients
+        WEB["React SPA<br/>apps/web (Vite dev :5173 / nginx :8080)"]
+    end
+
+    subgraph API["apps/api (NestJS, :3100 on the host)"]
+        GUARDS["Global guards<br/>RateLimitGuard → JwtAuthGuard → RolesGuard"]
+
+        subgraph Modules["modules/ (business)"]
+            IDENT["identity<br/>auth, users, orgs, OrgScope, scopeSql"]
+            CAT["catalog<br/>products, warehouses"]
+            PRICE["pricing<br/>PriceResolver, pickPrice, price lists"]
+            INV["inventory<br/>StockMovementService, ledger"]
+            ORD["ordering<br/>orders, reservations, idempotency,<br/>expiry + key-cleanup jobs, outbox bindings"]
+            AUDIT["audit<br/>AuditLogHandler, audit read API"]
+        end
+
+        subgraph Platform["platform/ (mechanism, never imports modules/)"]
+            DB["database<br/>pool, UnitOfWork, migrator"]
+            OUTBOX["outbox<br/>OutboxRelay: claim, savepoint, dispatch"]
+            SCHED["scheduler<br/>SchedulerRunner"]
+            RL["ratelimit + redis"]
+        end
+    end
+
+    subgraph Planned["Planned (Phases 07-08), not built"]
+        HARNESS["packages/ai-harness<br/>(empty placeholder)"]
+        COPILOT["modules/copilot"]
+    end
+
+    subgraph Infra["docker compose (127.0.0.1)"]
+        PG["PostgreSQL 16 + pgvector<br/>:5433"]
+        REDIS["Redis 7.4<br/>:6380"]
+        LITELLM["LiteLLM → AWS Bedrock<br/>:4001 (unused until Phase 07)"]
+    end
+
+    WEB -->|"REST (fetch), Bearer token,<br/>refresh cookie on /auth"| GUARDS
+    GUARDS --> IDENT & CAT & PRICE & INV & ORD & AUDIT
+    GUARDS -->|limiter| RL
+
+    ORD -->|application services| PRICE
+    ORD -->|application services| CAT
+    ORD -->|StockMovementService| INV
+    PRICE -->|CatalogService| CAT
+    ORD & PRICE -->|scopeSql| IDENT
+
+    ORD -->|"append event in the same tx"| DB
+    ORD -->|"registerHandler(AuditLogHandler)"| OUTBOX
+    OUTBOX -->|"handle(tx, event)"| AUDIT
+    ORD -->|register jobs| SCHED
+    SCHED -->|"run job (expiry sweep, key cleanup)"| ORD
+
+    IDENT & CAT & PRICE & INV & ORD & AUDIT --> DB
+    OUTBOX --> DB
+    DB --> PG
+    RL --> REDIS
+    IDENT -->|login throttle| REDIS
+
+    HARNESS -.-> LITELLM
+    COPILOT -.-> HARNESS
+    COPILOT -.->|application services only| ORD
+
+    style Planned fill:#f5f5f5,stroke:#999,stroke-dasharray: 5 5
+    style HARNESS fill:#eee,stroke:#999,stroke-dasharray: 5 5
+    style COPILOT fill:#eee,stroke:#999,stroke-dasharray: 5 5

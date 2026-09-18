@@ -1,0 +1,40 @@
+%% OutboxRelay.pollOnce / claimAndDispatch / recordFailure as implemented in
+%% apps/api/src/platform/outbox/outbox.relay.ts. Handlers are registered from
+%% modules/ (outbox-bindings.ts registers AuditLogHandler); the relay never knows event types.
+sequenceDiagram
+    participant Timer as setInterval<br/>(OUTBOX_POLL_INTERVAL_MS, default 1000)
+    participant Relay as OutboxRelay<br/>(platform/outbox)
+    participant DB as PostgreSQL
+    participant Handler as OutboxHandler<br/>(e.g. AuditLogHandler)
+
+    Note over Timer,Relay: Started on bootstrap except when NODE_ENV=test.<br/>A rejected poll is logged, never left unhandled.<br/>A poll still running makes the next tick return at once.
+    Timer->>Relay: pollOnce()
+    Relay->>DB: BEGIN (UnitOfWork.withTransaction)
+
+    Relay->>DB: SELECT id, aggregate_type, aggregate_id, event_type, org_id, payload, occurred_at, attempts<br/>FROM outbox_events<br/>WHERE status = 'pending' AND (next_attempt_at IS NULL OR next_attempt_at <= now())<br/>ORDER BY id LIMIT $1 (OUTBOX_BATCH_SIZE, default 20, max 64)<br/>FOR UPDATE SKIP LOCKED
+    Note over DB: The claim is the row lock, not a status update.<br/>A second relay polling now skips these rows and claims others.
+    DB-->>Relay: claimed rows (possibly none)
+
+    loop each claimed event, in id order
+        Relay->>DB: SAVEPOINT outbox_event
+        alt a handler is registered for event_type and succeeds
+            Relay->>Handler: handle(tx, event)
+            Handler->>DB: INSERT INTO audit_log (...) ON CONFLICT (event_id) DO NOTHING
+            Relay->>DB: UPDATE outbox_events SET status = 'processed', processed_at = now() WHERE id = $1
+            Relay->>DB: RELEASE SAVEPOINT outbox_event
+        else no handler, a JS error, or an SQL error in the handler
+            Note over Relay,DB: An SQL error aborts every later statement on the connection<br/>until something rolls back. The savepoint is that rollback point.<br/>An unregistered type fails with "No outbox handler registered for event type ...".
+            Relay->>DB: ROLLBACK TO SAVEPOINT outbox_event (undoes only this handler's writes)
+            alt attempts + 1 >= OUTBOX_MAX_ATTEMPTS (default 8)
+                Relay->>DB: UPDATE outbox_events SET status = 'dead', attempts = $2,<br/>last_error = $3, next_attempt_at = NULL WHERE id = $1
+                Note over Relay: Leaves the pending predicate, so it never blocks later events.<br/>Visible to ops_admin at GET /ops/outbox.
+            else retry later
+                Relay->>DB: UPDATE outbox_events SET attempts = $2, last_error = $3,<br/>next_attempt_at = now() + backoff WHERE id = $1
+                Note over Relay: backoff = min(200 ms × 2^(attempts-1), 30 s), ±25% jitter
+            end
+        end
+    end
+
+    Relay->>DB: COMMIT
+    Note over DB: Processed, retried and dead events are all recorded in one commit.<br/>The row locks are released.<br/>A crash before COMMIT rolls everything back: events return to pending<br/>with attempts unchanged, and a handler's write is undone with them.
+    Relay-->>Timer: { claimed, processed, failed, dead }

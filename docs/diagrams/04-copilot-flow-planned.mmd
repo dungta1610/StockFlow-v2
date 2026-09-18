@@ -1,0 +1,43 @@
+%% PLANNED design for the ops copilot (Phases 07-08). Nothing here is built:
+%% packages/ai-harness is an empty placeholder, modules/copilot and the ai.chat_sessions
+%% table do not exist. Both phases wait for the Bedrock spike (docs/adr/0003), which has
+%% not run for lack of AWS credentials. Source: the Phase 07 and Phase 08 plan files.
+%% The spike decides HOW the runtime is built: either map Strands SDK events from
+%% agent.stream() (~0.5 day), or write an own OpenAI-compatible tool loop (~2-3 days).
+%% Either way the harness wraps each tool handler to emit tool_start / tool_end itself.
+sequenceDiagram
+    participant Ops as Ops user
+    participant Web as React SPA
+    participant API as CopilotController<br/>@Roles('ops','ops_admin')
+    participant Session as copilot use case<br/>(send-message)
+    participant Runtime as AgentRuntime<br/>(packages/ai-harness)
+    participant Tools as Tools built for this request<br/>(Actor + OrgScope baked in)
+    participant Service as Application services<br/>(OrderService, InventoryService, ...)
+    participant LLM as LiteLLM alias default-chat<br/>→ Claude Haiku 4.5 on Bedrock
+
+    Ops->>Web: "which orders are about to expire?"
+    Web->>API: POST /copilot/sessions/:id/messages (SSE via fetch, token in header, never in the URL)
+    API->>Session: execute(actor, sessionId, message)
+    Session->>Session: load ai.chat_sessions by (tenant_id, owner_user_id, id)<br/>another tenant's session → 404
+    Session->>Tools: build tools from the caller's Actor<br/>get_inventory_status, find_orders, explain_order_blockers,<br/>list_expiring_reservations, get_contract_price,<br/>inventory_movement_history, propose_stock_adjustment
+    Note over Tools: Tool schemas have no tenant field for the model to fill.<br/>get_contract_price takes a customer org code and checks it<br/>with assertOrgInScope before pricing.
+    Session->>Runtime: stream(input with tools)
+
+    Runtime->>LLM: chat completion with tool definitions
+    LLM-->>Runtime: text and/or a tool call
+
+    alt model calls a tool
+        Runtime-->>Web: RunEvent tool_start { callId, name, input }
+        Runtime->>Tools: handler(input), validated by the tool's zod schema
+        Tools->>Service: service call with the same Actor and OrgScope<br/>(assertRole and scoped SQL inside the service)
+        Service-->>Tools: result
+        Tools-->>Runtime: result
+        Runtime-->>Web: RunEvent tool_end { callId, name, ok, durationMs }
+        Runtime->>LLM: continue with the tool result (tool calls per turn are capped)
+    end
+
+    Runtime-->>Web: text deltas
+    Runtime-->>Session: final result
+    Session->>Session: persist the transcript to the owned session
+
+    Note over Tools,Service: The only write tool, propose_stock_adjustment, creates a proposal.<br/>A person approves it (no self-approval, enforced by a CHECK), and approval<br/>runs the existing AdjustStockUseCase.

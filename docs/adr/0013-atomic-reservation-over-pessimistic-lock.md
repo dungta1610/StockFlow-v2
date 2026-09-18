@@ -72,3 +72,17 @@ leave an order stuck in it forever with its stock never returned.
 - `releaseAtomic` / `consumeAtomic` guard on the row's total reserved quantity (ADR 0012).
   Releasing only reservations still `held`, under the order lock, is what stops a
   repeated cancel from taking another order's units.
+
+## Open question: `available` in the 409 reveals stock levels to buyers
+`INSUFFICIENT_STOCK` carries `available`, the exact quantity available at that warehouse.
+Every inventory endpoint is ops-only, but a buyer can place an order with an oversized
+quantity for any product at any warehouse and read the stock level from the 409. The
+failed order changes nothing, so this is a free lookup, and the figure also reflects
+other buyers' reservations. The field was specified in the plan, so this is an undecided
+product question, not a coding error. The options:
+- keep `available` and accept the exposure;
+- return it only to internal ops, or clamp it (e.g. `min(available, requested - 1)`);
+- drop it for buyers and keep `sku` and `requested`.
+
+`OrderService.diagnose` computes the same figure and has no HTTP route yet. Decide this
+before anything (an endpoint or an agent tool) exposes it to buyers.

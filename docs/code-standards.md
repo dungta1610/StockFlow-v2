@@ -57,6 +57,14 @@ StockFlow (Go) used:
   (`numeric` columns). See ADR 0010.
 - Prices a buyer pays come only from `PriceResolver`; a price in a request body is ignored.
   See ADR 0011.
+- **A number in a Zod schema is a count and says so: `z.number().int()`.** Money is never a
+  `z.number()`; it is `moneySchema` (a decimal string). The "money is never a float" gate in
+  `scripts/verify-architecture.sh` fails on a bare `z.number()` (one followed directly by
+  `,` `;` or `)`) and on a money-named field typed `number`, anywhere in `apps/api/src`,
+  `apps/web/src` or `packages/contracts/src`. It is a grep, so `z.number().min(0)` without
+  `.int()` slips past it — review still has to catch that.
+  *Failure it prevents:* an amount accepted or typed as a JS number, losing precision
+  between the client and the API.
 
 ## 5. Tenancy
 

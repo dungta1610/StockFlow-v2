@@ -1,0 +1,79 @@
+%% POST /orders as implemented in order.controller.ts and create-order.use-case.ts.
+%% Isolation (READ COMMITTED), lock_timeout and statement_timeout are set once per
+%% connection in the pool's startup packet, not per transaction.
+sequenceDiagram
+    participant Client
+    participant Controller as OrderController<br/>(POST /orders)
+    participant Idem as IdempotencyService
+    participant UoW as UnitOfWork
+    participant UseCase as CreateOrderUseCase
+    participant Catalog as CatalogService
+    participant Prices as PriceResolver<br/>(SqlPriceResolver)
+    participant Orders as OrderRepository
+    participant Moves as StockMovementService
+    participant Reserv as ReservationRepository
+    participant Outbox as OutboxRepository
+    participant DB as PostgreSQL
+
+    Client->>Controller: POST /orders { warehouse_id, items[{product_id, quantity}] }<br/>optional Idempotency-Key header
+    Note over Controller: Guards: rate limit, JWT, @Roles('buyer','buyer_admin')<br/>Body validated by createOrderRequestSchema (no price field)
+
+    alt Idempotency-Key present (ADR 0015)
+        Controller->>Idem: execute({orgId, endpoint, key, requestHash}, work)
+        Idem->>DB: claim the key in its own committed statement
+        Note over Idem: A completed key replays the stored response.<br/>An in-progress key or a different request hash is refused.
+        Idem->>UoW: withTransaction(work)
+    else no key
+        Controller->>UoW: withTransaction(work)
+    end
+    UoW->>DB: BEGIN ISOLATION LEVEL READ COMMITTED
+    UoW->>UseCase: execute(tx, actor, input, now)
+
+    Note over UseCase: 1. AUTHORISE
+    UseCase->>UseCase: assertRole(actor, 'buyer', 'buyer_admin')<br/>actor.orgType must be 'buyer'<br/>normalise lines, reject empty or repeated products
+    UseCase->>Catalog: findWarehouse(tx, warehouseId)
+    Catalog->>DB: SELECT warehouse
+    UseCase->>UseCase: 404 if missing, 409 if inactive
+
+    Note over UseCase: 2. PRICE (two queries)
+    UseCase->>Prices: resolve(tx, orgScopeOf(actor), {id, type: 'buyer'}, lines, now)
+    Prices->>Catalog: findProducts(tx, ids)
+    Catalog->>DB: SELECT products
+    Prices->>DB: SELECT price_list_items JOIN price_lists<br/>WHERE product_id = ANY($1) AND (org_id = $2 OR org_id IS NULL)<br/>AND status = 'active' AND valid_from <= $3 AND (valid_to IS NULL OR valid_to > $3)
+    Prices->>Prices: pickPrice() per line: contract before default,<br/>priority, largest tier ≤ qty, else base_price
+    Prices-->>UseCase: priced lines
+
+    Note over UseCase: 3. WRITE ORDER AND LINES
+    UseCase->>Orders: insert(tx, {buyerOrgId, placedByUserId, warehouseId,<br/>subtotal, total, reservationExpiresAt = now + TTL})
+    Orders->>DB: INSERT INTO orders (order_code from next_order_code())
+    UseCase->>Orders: insertItems(tx, orderId, items sorted by SKU)
+    Orders->>DB: INSERT INTO order_items (order_id, product_id, quantity,<br/>unit_price, line_total, price_list_item_id)
+
+    Note over UseCase: 4. RESERVE, line by line in product-id order
+    loop each item, sorted by product id
+        UseCase->>Moves: reserve(tx, {productId, warehouseId, qty}, {orderId, reservationId, ...})
+        Moves->>DB: UPDATE inventory SET available_qty = available_qty - $3,<br/>reserved_qty = reserved_qty + $3, version = version + 1<br/>WHERE product_id = $1 AND warehouse_id = $2 AND available_qty >= $3<br/>RETURNING ...
+        alt row returned (row lock held until commit)
+            Moves->>DB: INSERT INTO inventory_transactions<br/>(txn_type 'reserve', before/after quantities, order_id, reservation_id)
+            Moves-->>UseCase: move
+        else zero rows
+            Moves-->>UseCase: null
+            UseCase->>DB: read current level (for the error details)
+            UseCase-->>UoW: throw INSUFFICIENT_STOCK {product_id, sku, requested, available}
+            UoW->>DB: ROLLBACK (undoes the order, lines and every earlier reservation)
+            Note over Idem: With a key: the key is released (marked failed)<br/>after the rollback, so the client may retry with it
+            Controller-->>Client: 409 { error: { code: 'INSUFFICIENT_STOCK', details } }<br/>details.available reveals the stock level (open question, ADR 0013)
+        end
+    end
+
+    Note over UseCase: 5. RECORD
+    UseCase->>Reserv: insertMany(tx, held)
+    Reserv->>DB: INSERT INTO inventory_reservations (status defaults to 'held')<br/>(fk_itx_reservation is deferred, checked at commit)
+    UseCase->>Outbox: append(tx, order.created, orgId = buyer org)
+    Outbox->>DB: INSERT INTO outbox_events (aggregate_type, aggregate_id, event_type, org_id, payload)
+
+    UseCase-->>UoW: order with items
+    UoW->>DB: COMMIT
+    Note over DB: One commit: order, order_items, inventory rows,<br/>ledger rows, reservations, outbox event
+    Note over Idem: With a key: the key was marked completed (response stored)<br/>inside this same transaction, just before COMMIT
+    Controller-->>Client: 201 { data: order }
