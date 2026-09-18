@@ -1,12 +1,22 @@
-// Placeholder shell. The ops console (routing, auth, screens) is built in the
-// web phase; this only proves the toolchain builds and serves.
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { RouterProvider } from '@tanstack/react-router';
+import { ApiError } from './lib/api-client';
+import { router } from './router';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // A 4xx will not fix itself; retrying it only delays the error state.
+      retry: (count, error) => !(error instanceof ApiError && error.status < 500) && count < 2,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
 export function App() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-background px-4 text-foreground">
-      <div className="text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">StockFlow</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Ops console — coming soon.</p>
-      </div>
-    </main>
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
   );
 }

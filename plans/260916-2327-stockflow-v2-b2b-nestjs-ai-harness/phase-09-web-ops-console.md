@@ -1,12 +1,19 @@
 ---
 phase: 9
 title: "Web Foundation & Ops Console"
-status: pending
+status: in-progress
 priority: P1
 dependencies: [5, 8]
 ---
 
 # Phase 09: Web Foundation & Ops Console
+
+> **Làm sớm theo yêu cầu (2026-09-18).** Người dùng cần UI để test Phase 00–04 nên phase này chạy trước 05/08, chia đợt:
+> 1. ✅ Nền (router, query, api-client + refresh mutex giữa tab, theme) + login chọn org + **Orders** (buyer đặt đơn có báo giá; ops mark-paid/fulfill/cancel/expire; sổ cái của đơn). Test #1, #2 xanh.
+> 2. Inventory (list, adjust, timeline sổ cái).
+> 3. Catalog + bảng giá — **ngoài danh sách 4 màn**, thêm vì cần test Phase 02.
+> 4. Orgs + users — **ngoài danh sách 4 màn**, thêm vì cần test Phase 01.
+> Reservations, Copilot, audit timeline, e2e làm khi 05/08 xong.
 
 > **Sửa sau red-team (MVP cut + SSE auth).** 7 màn → **4 màn**. Bỏ Dashboard (và endpoint `/ops/dashboard` bịa ra để phục vụ nó — một endpoint backend tính trong ngân sách frontend), bỏ Price-lists CRUD, bỏ Orgs & users CRUD. Giữ nguyên refresh mutex vì đó là bài học liên phase thật. 6→5 ngày.
 
