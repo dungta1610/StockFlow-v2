@@ -48,4 +48,33 @@ export abstract class OrderRepository {
 
   /** Newest first. */
   abstract list(tx: Tx, scope: OrgScope, filter: OrderFilter, paging: Paging): Promise<OrderWithItems[]>;
+
+  /**
+   * Up to `limit` `reserved` orders whose hold expired before `before`, soonest
+   * first, optionally resuming just past `after` — read outside any transaction the
+   * caller holds (docs/adr/0018): the reservation sweep locks each order one at a
+   * time, in its own transaction, never all of them in the transaction that read
+   * this list.
+   *
+   * `after` is what keeps a persistently failing order from crowding out every
+   * order behind it across repeated sweeps: the caller advances it past whatever it
+   * touched, pass or fail, and only resets to the start once a sweep reaches the
+   * end of the currently expired set.
+   */
+  abstract listReservedExpired(
+    db: Tx,
+    before: Date,
+    limit: number,
+    after?: ExpiryCursor | null,
+  ): Promise<ExpiredReservation[]>;
+}
+
+export interface ExpiryCursor {
+  expiresAt: Date;
+  id: string;
+}
+
+export interface ExpiredReservation {
+  id: string;
+  reservationExpiresAt: Date;
 }

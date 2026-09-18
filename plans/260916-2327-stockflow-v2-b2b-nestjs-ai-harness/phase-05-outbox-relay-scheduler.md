@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Outbox Relay, Scheduler & Audit"
-status: pending
+status: completed
 priority: P1
 dependencies: [4]
 ---
@@ -196,18 +196,18 @@ Chỉ tạo `audit_log`. `outbox_events` đã có hình dạng cuối ở migrat
 
 ## Success Criteria
 
-- [ ] 16 test ở §Tests First xanh.
-- [ ] **`platform/` không import `modules/`** — test #16 và ESLint cùng xác nhận.
-- [ ] Crash giữa claim và dispatch ⇒ event không mất, `attempts` không tăng oan.
-- [ ] Hai relay song song trên 100 event ⇒ mỗi event đúng một lần.
-- [ ] Hai sweeper song song trên 50 đơn ⇒ không cộng đúp.
-- [ ] Đơn 3 dòng với batch 2 ⇒ release đủ cả ba.
-- [ ] Job gặp lock ⇒ timeout 5s và log, **không treo**.
-- [ ] Đơn `paid` không bao giờ bị sweeper expire.
-- [ ] Chỉ **một** cột quyết định "đã xử lý"; claim query và index dùng cùng predicate.
-- [ ] `audit_log.summary` không chứa đơn giá; đọc audit cần `ops_admin` + scope.
-- [ ] Thêm `OutboxHandler` thứ hai chỉ cần 1 file + 1 dòng binding — chứng minh bằng một handler log-only trong test.
-- [ ] ADR 0017 nêu rõ at-least-once + không đảm bảo thứ tự + đường đổi sang broker ngoài.
+- [x] 16 test ở §Tests First xanh.
+- [x] **`platform/` không import `modules/`** — test #16 và ESLint cùng xác nhận.
+- [x] Crash giữa claim và dispatch ⇒ event không mất, `attempts` không tăng oan.
+- [x] Hai relay song song trên 100 event ⇒ mỗi event đúng một lần.
+- [x] Hai sweeper song song trên 50 đơn ⇒ không cộng đúp.
+- [x] Đơn 3 dòng với batch 2 ⇒ release đủ cả ba.
+- [x] Job gặp lock ⇒ timeout 5s và log, **không treo**.
+- [x] Đơn `paid` không bao giờ bị sweeper expire.
+- [x] Chỉ **một** cột quyết định "đã xử lý"; claim query và index dùng cùng predicate.
+- [x] `audit_log.summary` không chứa đơn giá; đọc audit cần `ops_admin` + scope.
+- [x] Thêm `OutboxHandler` thứ hai chỉ cần 1 file + 1 dòng binding — chứng minh bằng một handler log-only trong test.
+- [x] ADR 0017 nêu rõ at-least-once + không đảm bảo thứ tự + đường đổi sang broker ngoài.
 
 ## Risk Assessment
 

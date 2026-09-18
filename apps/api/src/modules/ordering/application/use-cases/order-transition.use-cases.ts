@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Tx } from '../../../../platform/database/tx';
-import { type Actor, assertRole } from '../../../identity/domain/actor';
+import { type Actor, SYSTEM_ACTOR_ID, assertRole } from '../../../identity/domain/actor';
 import { orgScopeOf } from '../../../identity/domain/org-scope';
 import { StockMovementService } from '../../../inventory/application/stock-movement.service';
 import { OrderErrors } from '../../domain/errors';
@@ -79,7 +79,11 @@ export class OrderTransitions {
     const held = await this.reservations.lockHeld(tx, order.id);
     for (const r of held) {
       const input = { inventoryId: r.inventoryId, qty: r.quantity };
-      const ctx = { orderId: order.id, reservationId: r.id, createdBy: actor.userId, reason: `order ${order.orderCode} ${target}` };
+      // systemActor (the reservation-expiry sweep) is not a row in `users`; the
+      // ledger's created_by carries a foreign key to it, so a system-driven
+      // movement records no created_by rather than a dangling id.
+      const createdBy = actor.userId === SYSTEM_ACTOR_ID ? null : actor.userId;
+      const ctx = { orderId: order.id, reservationId: r.id, createdBy, reason: `order ${order.orderCode} ${target}` };
       const move =
         effect === 'consume' ? await this.movements.consume(tx, input, ctx) : await this.movements.release(tx, input, ctx);
       // A held reservation is always covered by reserved_qty; if not, the books are

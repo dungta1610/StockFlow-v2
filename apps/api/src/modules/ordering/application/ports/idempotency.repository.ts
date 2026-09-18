@@ -29,4 +29,8 @@ export abstract class IdempotencyRepository {
 
   /** Frees a key whose work failed, so the client may retry with it. */
   abstract release(db: Tx, claim: IdempotencyClaim): Promise<void>;
+
+  /** Deletes keys created before `before`. Returns how many were removed — the TTL
+   *  cleanup job that bounds this table's growth (docs/adr/0015). */
+  abstract deleteExpired(tx: Tx, before: Date): Promise<number>;
 }

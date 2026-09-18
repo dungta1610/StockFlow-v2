@@ -7,3 +7,5 @@ export * from './inventory';
 export * from './catalog';
 export * from './pricing';
 export * from './ordering';
+export * from './outbox';
+export * from './audit';

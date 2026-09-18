@@ -94,7 +94,19 @@ StockFlow (Go) used:
 - Concurrency tests assert **outcome counts** (e.g. exactly 10 successes and 40 conflicts),
   not only an aggregate invariant: an aggregate can also hold when every request failed.
 
-## 9. Naming
+## 9. Outbox handlers (docs/adr/0017)
+
+- An `OutboxHandler` runs inside the same transaction the relay uses to mark its
+  event processed, and **must be idempotent**: at-least-once delivery means
+  `handle()` can be called more than once for the same event (a retry, or an
+  operator re-running a dead event). State how idempotency is achieved next to the
+  handler. The standard shape is a unique key on the write plus
+  `ON CONFLICT (...) DO NOTHING` — see `AuditLogHandler`.
+- Routing (which event type goes to which handler) lives in `modules/`, registered
+  with the relay via `OutboxRelay.registerHandler()`. The relay itself
+  (`platform/outbox`) never knows which event types exist.
+
+## 10. Naming
 
 - Files: kebab-case (`create-order.use-case.ts`).
 - Migrations: `NNN_description.sql`, contiguous, never renumbered or edited after running

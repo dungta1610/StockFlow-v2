@@ -71,4 +71,18 @@ export class SqlIdempotencyRepository extends IdempotencyRepository {
       [c.orgId, c.endpoint, c.key, c.requestHash],
     );
   }
+
+  /**
+   * By `updated_at`, never `created_at`: `claim()` re-takes a `failed` key with
+   * `status = 'in_progress', updated_at = now()` but never resets `created_at`, so
+   * a key first created past the TTL and retried just now is "old" by created_at
+   * and "live" by updated_at. Deleting by created_at would remove it mid-flight —
+   * the retried request's `complete()` would then throw "no longer held". A key
+   * genuinely stuck `in_progress` (its worker died) still gets cleaned up once its
+   * own updated_at — set when it was claimed — passes the TTL.
+   */
+  async deleteExpired(tx: Tx, before: Date): Promise<number> {
+    const rows = await tx.query(`DELETE FROM idempotency_keys WHERE updated_at < $1 RETURNING 1`, [before]);
+    return rows.length;
+  }
 }

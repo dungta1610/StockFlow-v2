@@ -4,7 +4,13 @@ import type { Tx } from '../../../platform/database/tx';
 import type { OrgScope } from '../../identity/domain/org-scope';
 import { scopeSql } from '../../identity/infrastructure/scope-sql';
 import { Money } from '../../pricing/domain/money';
-import { type NewOrder, type NewOrderItem, OrderRepository } from '../application/ports/order.repository';
+import {
+  type ExpiredReservation,
+  type ExpiryCursor,
+  type NewOrder,
+  type NewOrderItem,
+  OrderRepository,
+} from '../application/ports/order.repository';
 import type { Order, OrderFilter, OrderItem, OrderWithItems } from '../domain/order';
 import { INITIAL_ORDER_STATUS, type OrderStatus } from '../domain/order-state-machine';
 
@@ -169,6 +175,26 @@ export class SqlOrderRepository extends OrderRepository {
   async findByCode(tx: Tx, scope: OrgScope, orderCode: string): Promise<OrderWithItems | null> {
     const [order] = await this.select(tx, scope, 'o.order_code = $1', [orderCode]);
     return order ?? null;
+  }
+
+  async listReservedExpired(
+    tx: Tx,
+    before: Date,
+    limit: number,
+    after?: ExpiryCursor | null,
+  ): Promise<ExpiredReservation[]> {
+    // idx_orders_reserved_expiry is exactly (reservation_expires_at) WHERE status = 'reserved'.
+    // The row comparison keys the cursor on (expires_at, id) together, so two
+    // orders that expire at the same instant still page in a stable order.
+    const rows = await tx.query<{ id: string; reservation_expires_at: Date }>(
+      `SELECT id, reservation_expires_at FROM orders
+        WHERE status = 'reserved' AND reservation_expires_at < $1
+          AND ($3::timestamptz IS NULL OR (reservation_expires_at, id) > ($3::timestamptz, $4::uuid))
+        ORDER BY reservation_expires_at, id
+        LIMIT $2`,
+      [before, limit, after?.expiresAt ?? null, after?.id ?? null],
+    );
+    return rows.map((r) => ({ id: r.id, reservationExpiresAt: r.reservation_expires_at }));
   }
 
   async list(tx: Tx, scope: OrgScope, filter: OrderFilter, paging: Paging): Promise<OrderWithItems[]> {

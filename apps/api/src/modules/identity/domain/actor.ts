@@ -33,3 +33,24 @@ export function assertRole(actor: Actor, ...allowed: Role[]): void {
   );
   if (!ok) throw forbidden('You do not have the role required for this action.');
 }
+
+/**
+ * Sentinel id for the system actor below. It is not a row in `users`, so any code
+ * writing it to a column with a foreign key to `users` (e.g. `audit_log.actor_user_id`)
+ * must treat it as "no human actor" and store null instead.
+ */
+export const SYSTEM_ACTOR_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * The actor in-process jobs act as — the reservation-expiry sweep today, and any
+ * job added later that must call a use case without an HTTP request behind it. Ops
+ * rights, scoped to every buyer organisation (`OrgScope` `all-buyers` — see
+ * `orgScopeOf`), no human session. Defined once here so a job never invents its own
+ * bypass of the role and scope checks every other caller goes through.
+ */
+export const systemActor: Actor = {
+  userId: SYSTEM_ACTOR_ID,
+  orgId: SYSTEM_ACTOR_ID,
+  orgType: 'internal',
+  roles: ['ops_admin'],
+};
