@@ -5,6 +5,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { InventoryModule } from './modules/inventory/inventory.module';
 import { JwtAuthGuard } from './modules/identity/http/jwt-auth.guard';
 import { RolesGuard } from './modules/identity/http/roles.guard';
+import { OrderingModule } from './modules/ordering/ordering.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { ConfigModule } from './platform/config/config.module';
 import { DatabaseModule } from './platform/database/database.module';
@@ -25,6 +26,7 @@ import { RedisModule } from './platform/redis/redis.module';
     CatalogModule,
     PricingModule,
     InventoryModule,
+    OrderingModule,
   ],
   providers: [
     // Global guards run in this order: a flood is rejected before any token work,

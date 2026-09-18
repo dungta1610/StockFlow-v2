@@ -45,12 +45,12 @@ Học sâu kiến trúc + AI. Thước đo là *mỗi thứ build ra dạy đư�
 | 01 | [Identity, Auth, RBAC & OrgScope](phase-01-identity-auth-rbac.md) | **completed** | P1 | 00 | 4 ngày |
 | 02 | [Catalog, Warehouse & Pricing](phase-02-catalog-warehouse-pricing.md) | **completed** | P1 | 01 | 3 ngày |
 | 03 | [Inventory Core & Ledger](phase-03-inventory-core-ledger.md) | **completed** | P1 | 02 | 2 ngày |
-| 04 | [Ordering, Atomic Reservation & Lifecycle](phase-04-ordering-atomic-reservation.md) | pending | P1 | 02, 03 | 5 ngày |
+| 04 | [Ordering, Atomic Reservation & Lifecycle](phase-04-ordering-atomic-reservation.md) | **completed** | P1 | 02, 03 | 5 ngày |
 | 05 | [Outbox Relay, Scheduler & Audit](phase-05-outbox-relay-scheduler.md) | pending | P1 | 04 | 3 ngày |
 | 06 | ~~Payment (Simulated)~~ | **cancelled** | — | — | — |
 | 07 | [packages/ai-harness Extraction](phase-07-ai-harness-package.md) | pending | P1 | 00 | 6 ngày |
 | 08 | [Ops Copilot](phase-08-ops-copilot.md) | pending | P1 | 02, 03, 04, 07 | 4 ngày |
-| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | pending | P1 | 05, 08 | 5 ngày |
+| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | in-progress (làm sớm, đợt 1/4) | P1 | 05, 08 | 5 ngày |
 | 10 | ~~Buyer Portal~~ | **cancelled** | — | — | — |
 | 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | pending | P2 | 09 | 3 ngày |
 

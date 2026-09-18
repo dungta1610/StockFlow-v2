@@ -3,7 +3,7 @@ import { type Paging, pagingSql, paramBinder } from '../../../platform/database/
 import type { Tx } from '../../../platform/database/tx';
 import { InventoryRepository } from '../application/ports/inventory.repository';
 import { InventoryErrors } from '../domain/errors';
-import type { InventoryDetail, InventoryFilter, StockMove } from '../domain/inventory';
+import type { InventoryDetail, InventoryFilter, StockLevel, StockMove } from '../domain/inventory';
 
 interface MoveRow {
   id: string;
@@ -174,6 +174,15 @@ export class SqlInventoryRepository extends InventoryRepository {
     }
     const rows = await tx.query<DetailRow>(`${DETAIL_SELECT} WHERE ${where} ORDER BY w.code`, params);
     return rows.map(toDetail);
+  }
+
+  async findLevels(tx: Tx, warehouseId: string, productIds: readonly string[]): Promise<Map<string, StockLevel>> {
+    const rows = await tx.query<{ product_id: string; available_qty: number; reserved_qty: number }>(
+      `SELECT product_id, available_qty, reserved_qty FROM inventory
+        WHERE warehouse_id = $1 AND product_id = ANY($2::uuid[])`,
+      [warehouseId, productIds],
+    );
+    return new Map(rows.map((r) => [r.product_id, { available: r.available_qty, reserved: r.reserved_qty }]));
   }
 
   async list(tx: Tx, filter: InventoryFilter, paging: Paging): Promise<InventoryDetail[]> {

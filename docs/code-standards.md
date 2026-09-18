@@ -36,6 +36,16 @@ StockFlow (Go) used:
   invisible to Postgres' deadlock detector because one edge of the cycle is in the app.
 - Every connection runs with `lock_timeout` and `statement_timeout`; transactions default to
   READ COMMITTED.
+- The one exception is `IdempotencyService` (ADR 0015): its key claim must commit before
+  the work's transaction opens, so it opens its own transactions and is called only from
+  outside one.
+- **One lock order for the whole system** (ADR 0013):
+  `orders` (by id) → that order's `inventory_reservations` → `inventory` (by product id).
+  A path that changes an order locks the order row first; stock rows are always touched
+  in product-id order. *Failure it prevents:* two paths taking the same rows in opposite
+  order deadlock, and one of them is aborted.
+- Every change to an order's status writes its `outbox_events` row in the same
+  transaction, with the buyer organisation as `org_id`.
 
 ## 4. Money
 

@@ -2,7 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { StockMovementService } from '../../src/modules/inventory/application/stock-movement.service';
 import { UnitOfWork } from '../../src/platform/database/unit-of-work';
 import { insertProduct, insertWarehouse } from '../helpers/catalog-fixtures';
-import { withDb } from '../helpers/identity-fixtures';
+import { seedTenants, withDb } from '../helpers/identity-fixtures';
 import { createTestApp } from '../helpers/test-app';
 
 /**
@@ -45,9 +45,17 @@ describe('stock movements', () => {
 
   describe('reserve', () => {
     it('moves stock from available to reserved and records the movement', async () => {
-      const move = await stock.reserve(uow.db, { productId: product, warehouseId: warehouse, qty: 4 }, {
-        orderId: '11111111-1111-4111-8111-111111111111',
+      // The ledger's order_id is a real foreign key, so the movement needs a real order.
+      const t = await seedTenants();
+      const orderId = await withDb(async (pg) => {
+        const { rows } = await pg.query<{ id: string }>(
+          `INSERT INTO commerce.orders (buyer_org_id, placed_by_user_id, warehouse_id, status, subtotal, total)
+           VALUES ($1, $2, $3, 'reserved', 0, 0) RETURNING id`,
+          [t.buyerA, t.users.buyerA, warehouse],
+        );
+        return rows[0]!.id;
       });
+      const move = await stock.reserve(uow.db, { productId: product, warehouseId: warehouse, qty: 4 }, { orderId });
       expect(move).toEqual({
         inventoryId,
         productId: product,
@@ -69,7 +77,7 @@ describe('stock movements', () => {
         after_available_qty: 6,
         before_reserved_qty: 0,
         after_reserved_qty: 4,
-        order_id: '11111111-1111-4111-8111-111111111111',
+        order_id: orderId,
       });
     });
 

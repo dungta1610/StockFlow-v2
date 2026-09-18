@@ -36,6 +36,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       res.end();
       return;
     }
+    if (exception instanceof DomainError && exception.headers) res.set(exception.headers);
     res.status(status).json(body);
   }
 }

@@ -6,3 +6,4 @@ export * from './identity';
 export * from './inventory';
 export * from './catalog';
 export * from './pricing';
+export * from './ordering';

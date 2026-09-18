@@ -1,7 +1,7 @@
 ---
 phase: 4
 title: "Ordering, Atomic Reservation & Lifecycle"
-status: pending
+status: completed
 priority: P1
 dependencies: [2, 3]
 ---
@@ -291,18 +291,18 @@ alter table inventory_transactions
 
 ## Success Criteria
 
-- [ ] Toàn bộ 19 test xanh.
-- [ ] Test #1 chạy 10 lần liên tiếp đều xanh, **và assert theo status code** (một lần chạy toàn 500 phải làm test đỏ).
-- [ ] Test #4 (create + cancel + adjust + sweeper đồng thời) không deadlock.
-- [ ] Đơn 3 dòng cancel ⇒ release **đủ cả ba**.
-- [ ] Đơn thất bại giữa chừng không để lại **bất kỳ** row nào.
-- [ ] `INSUFFICIENT_STOCK` ⇒ thử lại cùng idempotency key vẫn thành công.
-- [ ] Hai request cùng key song song ⇒ một đơn, cái thua nhận 409 có nghĩa.
-- [ ] `order_items.unit_price` không bao giờ từ request body (DTO không khai field đó).
-- [ ] Ops list được đơn mọi buyer org; buyer chỉ thấy của mình.
-- [ ] **Không xuất hiện chuỗi `releasing` ở bất kỳ đâu trong `modules/ordering`** (grep).
-- [ ] `order_code` không va chạm khi tạo 10.000 đơn cùng ngày.
-- [ ] ADR 0013–0016 tồn tại.
+- [x] Toàn bộ 19 test xanh.
+- [x] Test #1 chạy 10 lần liên tiếp đều xanh, **và assert theo status code** (một lần chạy toàn 500 phải làm test đỏ).
+- [x] Test #4 (create + cancel + adjust + sweeper đồng thời) không deadlock.
+- [x] Đơn 3 dòng cancel ⇒ release **đủ cả ba**.
+- [x] Đơn thất bại giữa chừng không để lại **bất kỳ** row nào.
+- [x] `INSUFFICIENT_STOCK` ⇒ thử lại cùng idempotency key vẫn thành công.
+- [x] Hai request cùng key song song ⇒ một đơn, cái thua nhận 409 có nghĩa.
+- [x] `order_items.unit_price` không bao giờ từ request body (DTO không khai field đó).
+- [x] Ops list được đơn mọi buyer org; buyer chỉ thấy của mình.
+- [x] **Không xuất hiện chuỗi `releasing` ở bất kỳ đâu trong `modules/ordering`** (grep).
+- [x] `order_code` không va chạm khi tạo 10.000 đơn cùng ngày.
+- [x] ADR 0013–0016 tồn tại.
 
 ## Risk Assessment
 

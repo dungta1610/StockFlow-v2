@@ -1,6 +1,6 @@
 import type { Paging } from '../../../../platform/database/sql';
 import type { Tx } from '../../../../platform/database/tx';
-import type { InventoryDetail, InventoryFilter, StockMove } from '../../domain/inventory';
+import type { InventoryDetail, InventoryFilter, StockLevel, StockMove } from '../../domain/inventory';
 
 /**
  * Every write is a single conditional statement that returns the levels before and
@@ -46,4 +46,7 @@ export abstract class InventoryRepository {
 
   /** Every stock row for one product, ordered by warehouse code — no paging to hide behind. */
   abstract findByProduct(tx: Tx, productId: string, warehouseId?: string): Promise<InventoryDetail[]>;
+
+  /** Current levels of several products in one warehouse, keyed by product id. Unstocked products are absent. */
+  abstract findLevels(tx: Tx, warehouseId: string, productIds: readonly string[]): Promise<Map<string, StockLevel>>;
 }

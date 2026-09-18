@@ -32,6 +32,9 @@ export const envSchema = z.object({
   LOGIN_MAX_ATTEMPTS_PER_IP: z.coerce.number().int().positive().default(20),
   LOGIN_WINDOW_SECONDS: z.coerce.number().int().positive().default(900),
 
+  /** How long a new order holds its stock before the expiry sweep may release it. */
+  ORDER_RESERVATION_TTL_MINUTES: z.coerce.number().int().positive().default(30),
+
   /**
    * Comma-separated browser origins allowed by CORS. Also the allow-list for the
    * cookie-authenticated /auth/refresh and /auth/logout endpoints.

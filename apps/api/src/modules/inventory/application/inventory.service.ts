@@ -64,4 +64,15 @@ export class InventoryService {
       })),
     };
   }
+
+  /**
+   * Levels of several products in one warehouse, for modules that already hold
+   * resolved ids (ordering explains a shortfall, diagnoses an order). A product the
+   * warehouse has never stocked reads as zero. No role check: callers decide what of
+   * this they may show.
+   */
+  async levelsAt(db: Tx, warehouseId: string, productIds: readonly string[]): Promise<Map<string, StockLevel>> {
+    const found = await this.inventory.findLevels(db, warehouseId, productIds);
+    return new Map(productIds.map((id) => [id, found.get(id) ?? { available: 0, reserved: 0 }]));
+  }
 }

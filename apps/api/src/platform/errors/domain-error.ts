@@ -9,6 +9,8 @@ export class DomainError extends Error {
     message: string,
     readonly status: number,
     readonly details?: unknown,
+    /** Response headers that belong with this failure, e.g. `Retry-After`. */
+    readonly headers?: Readonly<Record<string, string>>,
   ) {
     super(message);
     this.name = 'DomainError';
