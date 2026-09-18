@@ -186,8 +186,12 @@ export class SqlOrderRepository extends OrderRepository {
     // idx_orders_reserved_expiry is exactly (reservation_expires_at) WHERE status = 'reserved'.
     // The row comparison keys the cursor on (expires_at, id) together, so two
     // orders that expire at the same instant still page in a stable order.
-    const rows = await tx.query<{ id: string; reservation_expires_at: Date }>(
-      `SELECT id, reservation_expires_at FROM orders
+    // `::text` keeps the cursor at Postgres's own microsecond precision: reading
+    // the column as a JS Date and feeding it back next page would truncate to
+    // milliseconds, so a row's own value would compare "after" the cursor it
+    // produced and keep re-qualifying forever (see ExpiryCursor's doc).
+    const rows = await tx.query<{ id: string; reservation_expires_at: string }>(
+      `SELECT id, reservation_expires_at::text AS reservation_expires_at FROM orders
         WHERE status = 'reserved' AND reservation_expires_at < $1
           AND ($3::timestamptz IS NULL OR (reservation_expires_at, id) > ($3::timestamptz, $4::uuid))
         ORDER BY reservation_expires_at, id

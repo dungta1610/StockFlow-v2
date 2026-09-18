@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Pool, PoolClient, QueryResultRow } from 'pg';
 import { PG_POOL } from './database.tokens';
 import type { IsolationLevel, Tx } from './tx';
@@ -21,6 +21,8 @@ const clientTx = (client: PoolClient): Tx => ({
  */
 @Injectable()
 export class UnitOfWork {
+  private readonly logger = new Logger(UnitOfWork.name);
+
   constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async withTransaction<T>(
@@ -28,6 +30,19 @@ export class UnitOfWork {
     opts: { isolation?: IsolationLevel } = {},
   ): Promise<T> {
     const client = await this.pool.connect();
+    // pg-pool only listens for a client's 'error' event while it sits idle in the
+    // pool (it removes that listener on checkout and re-adds it on release). For
+    // the whole time this client is checked out, nothing listens — so a lost
+    // connection (database restart, failover, pg_terminate_backend) mid-transaction
+    // emits an unlistened 'error' and crashes the process. This listener closes
+    // that gap for the checkout's lifetime; `client.release(err)` below then tells
+    // pg-pool to destroy the client instead of re-pooling a broken one.
+    let connectionError: Error | undefined;
+    const onError = (err: Error) => {
+      connectionError = err;
+      this.logger.error(`Database connection lost mid-transaction: ${err.message}`);
+    };
+    client.on('error', onError);
     try {
       await client.query(`BEGIN ISOLATION LEVEL ${ISOLATION_SQL[opts.isolation ?? 'read committed']}`);
       const result = await fn(clientTx(client));
@@ -37,7 +52,8 @@ export class UnitOfWork {
       await client.query('ROLLBACK').catch(() => undefined);
       throw err;
     } finally {
-      client.release();
+      client.off('error', onError);
+      client.release(connectionError);
     }
   }
 

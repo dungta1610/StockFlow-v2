@@ -70,11 +70,21 @@ export abstract class OrderRepository {
 }
 
 export interface ExpiryCursor {
-  expiresAt: Date;
+  /**
+   * The row's `reservation_expires_at`, carried as Postgres's own text output
+   * (microsecond precision) rather than parsed into a JS `Date` (millisecond
+   * precision). Re-parsing would truncate sub-millisecond digits, so a row's own
+   * real value would compare "after" the cursor it just produced — re-selecting
+   * that row (and anything sharing its millisecond) on every later page, and
+   * starving whatever sorts behind it. Round-tripped as text, the comparison is
+   * exact.
+   */
+  expiresAt: string;
   id: string;
 }
 
 export interface ExpiredReservation {
   id: string;
-  reservationExpiresAt: Date;
+  /** Exact-precision text (see `ExpiryCursor.expiresAt`) — carry it straight into the next cursor, never parse it as a Date. */
+  reservationExpiresAt: string;
 }
