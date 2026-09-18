@@ -91,7 +91,7 @@ export function Badge({ className, tone = 'neutral', ...props }: ComponentProps<
 /** Tables scroll inside their own box, never the page. */
 export function Table({ className, ...props }: ComponentProps<'table'>) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="relative w-full overflow-x-auto">
       <table className={cn('w-full text-sm', className)} {...props} />
     </div>
   );

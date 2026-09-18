@@ -23,31 +23,31 @@ const txn = (overrides: Partial<InventoryTransactionView>): InventoryTransaction
 
 describe('ledgerRows', () => {
   it('carries the raw before/after pair through for each side', () => {
-    const [row] = ledgerRows([txn({ before_available_qty: 100, after_available_qty: 110, before_reserved_qty: 5, after_reserved_qty: 5 })]);
+    const row = ledgerRows([txn({ before_available_qty: 100, after_available_qty: 110, before_reserved_qty: 5, after_reserved_qty: 5 })])[0]!;
     expect(row.available).toMatchObject({ before: 100, after: 110 });
     expect(row.reserved).toMatchObject({ before: 5, after: 5 });
   });
 
   it('marks an increase as "up"', () => {
-    const [row] = ledgerRows([txn({ before_available_qty: 100, after_available_qty: 110 })]);
+    const row = ledgerRows([txn({ before_available_qty: 100, after_available_qty: 110 })])[0]!;
     expect(row.available.direction).toBe('up');
   });
 
   it('marks a decrease as "down"', () => {
-    const [row] = ledgerRows([txn({ txn_type: 'reserve', before_available_qty: 100, after_available_qty: 90 })]);
+    const row = ledgerRows([txn({ txn_type: 'reserve', before_available_qty: 100, after_available_qty: 90 })])[0]!;
     expect(row.available.direction).toBe('down');
   });
 
   it('a reserve moves stock from available to reserved: available down, reserved up', () => {
-    const [row] = ledgerRows([
+    const row = ledgerRows([
       txn({ txn_type: 'reserve', before_available_qty: 100, after_available_qty: 90, before_reserved_qty: 0, after_reserved_qty: 10 }),
-    ]);
+    ])[0]!;
     expect(row.available.direction).toBe('down');
     expect(row.reserved.direction).toBe('up');
   });
 
   it('marks a side flat when before equals after', () => {
-    const [row] = ledgerRows([txn({ before_reserved_qty: 5, after_reserved_qty: 5 })]);
+    const row = ledgerRows([txn({ before_reserved_qty: 5, after_reserved_qty: 5 })])[0]!;
     expect(row.reserved.direction).toBe('flat');
   });
 

@@ -4,7 +4,9 @@ import { ArrowLeft } from 'lucide-react';
 import { EmptyState, ErrorState, ErrorText, LoadingRows } from '@/components/page-state';
 import { Button, Card, CardContent, CardHeader, CardTitle, Table, Td, Th } from '@/components/ui/primitives';
 import { formatDateTime, formatMoney, relativeMinutes } from '@/lib/format';
-import { isOps, useRequiredSession } from '../auth/session';
+import { isOps, isOpsAdmin, useRequiredSession } from '../auth/session';
+import { OrderAuditTimeline } from './order-audit-timeline';
+import { OrderReservations } from './order-reservations';
 import { OrderStateMachine, OrderStatusBadge } from './order-status';
 import { type OrderAction, useOrder, useOrderAction, useOrderLedger, useWarehouses } from './orders-api';
 
@@ -70,9 +72,16 @@ function OrderDetail({ order, session }: { order: OrderView; session: SessionVie
               <dd>{formatDateTime(order.created_at)}</dd>
               <dt className="text-muted-foreground">Hold ends</dt>
               <dd>
-                {formatDateTime(order.reservation_expires_at)}
-                {order.status === 'reserved' && order.reservation_expires_at && (
-                  <span className="text-muted-foreground"> ({relativeMinutes(order.reservation_expires_at)})</span>
+                {/* Once an order leaves `reserved` the sweep no longer acts on its
+                    reservation_expires_at, so the original deadline is stale — show
+                    it only while it is still a live deadline. */}
+                {order.status === 'reserved' && order.reservation_expires_at ? (
+                  <>
+                    {formatDateTime(order.reservation_expires_at)}
+                    <span className="text-muted-foreground"> ({relativeMinutes(order.reservation_expires_at)})</span>
+                  </>
+                ) : (
+                  '—'
                 )}
               </dd>
               <dt className="text-muted-foreground">Paid</dt>
@@ -118,7 +127,16 @@ function OrderDetail({ order, session }: { order: OrderView; session: SessionVie
         </Table>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Reservations</CardTitle>
+          <p className="text-xs text-muted-foreground">The stock this order holds, one row per line.</p>
+        </CardHeader>
+        <OrderReservations order={order} />
+      </Card>
+
       {ops && <OrderLedger orderId={order.id} />}
+      {isOpsAdmin(session) && <OrderAuditTimeline orderId={order.id} />}
     </>
   );
 }

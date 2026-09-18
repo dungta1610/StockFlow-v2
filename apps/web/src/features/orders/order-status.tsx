@@ -21,14 +21,26 @@ export function OrderStatusBadge({ status }: { status: OrderStatusValue }) {
  * The five statuses v1 produces, laid out as the lifecycle (ADR 0016). The three
  * enum values nothing creates are not drawn.
  */
-const MAIN_PATH: OrderStatusValue[] = ['reserved', 'paid', 'fulfilled'];
-const SIDE_EXITS: OrderStatusValue[] = ['cancelled', 'expired'];
+export const MAIN_PATH: OrderStatusValue[] = ['reserved', 'paid', 'fulfilled'];
+export const SIDE_EXITS: OrderStatusValue[] = ['cancelled', 'expired'];
+/** Every status the state machine renders — exactly the five v1 produces. */
+export const RENDERED_STATUSES: OrderStatusValue[] = [...MAIN_PATH, ...SIDE_EXITS];
 
-export function OrderStateMachine({ status }: { status: OrderStatusValue }) {
+/**
+ * Which statuses are "reached" on the path to `status`, for highlighting the
+ * lifecycle diagram. Pulled out as a pure function so it is testable without
+ * mounting the component (see test/order-state-machine.spec.ts).
+ */
+export function reachedStatuses(status: OrderStatusValue): Set<OrderStatusValue> {
   const reached = new Set<OrderStatusValue>(['reserved']);
   if (status === 'paid' || status === 'fulfilled') reached.add('paid');
   if (status === 'fulfilled') reached.add('fulfilled');
   if (SIDE_EXITS.includes(status)) reached.add(status);
+  return reached;
+}
+
+export function OrderStateMachine({ status }: { status: OrderStatusValue }) {
+  const reached = reachedStatuses(status);
 
   const node = (s: OrderStatusValue) => (
     <div

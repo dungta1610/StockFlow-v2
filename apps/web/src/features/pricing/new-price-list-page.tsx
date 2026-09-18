@@ -2,7 +2,8 @@ import { Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { ErrorText } from '@/components/page-state';
-import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from '@/components/ui/primitives';
+import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label } from '@/components/ui/primitives';
+import { SearchSelect } from '@/components/ui/search-select';
 import { useOrganizations } from '../orgs/orgs-api';
 import { useCreatePriceList } from './pricing-api';
 
@@ -11,6 +12,11 @@ export function NewPriceListPage() {
   const orgs = useOrganizations();
   const create = useCreatePriceList();
   const [orgId, setOrgId] = useState('');
+  const [orgQuery, setOrgQuery] = useState('');
+  const buyerOrgOptions = (orgs.data ?? [])
+    .filter((o) => o.type === 'buyer')
+    .filter((o) => `${o.code} ${o.name}`.toLowerCase().includes(orgQuery.trim().toLowerCase()))
+    .map((o) => ({ id: o.id, label: `${o.code} — ${o.name}` }));
   const [name, setName] = useState('');
   const [validFrom, setValidFrom] = useState(() => toLocalInput(new Date()));
   const [validTo, setValidTo] = useState('');
@@ -46,16 +52,20 @@ export function NewPriceListPage() {
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="pl-org">Organisation</Label>
-              <Select id="pl-org" value={orgId} onChange={(e) => setOrgId(e.target.value)} disabled={orgs.isPending}>
-                <option value="">Default (all buyers)</option>
-                {orgs.data
-                  ?.filter((o) => o.type === 'buyer')
-                  .map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.code} — {o.name}
-                    </option>
-                  ))}
-              </Select>
+              <SearchSelect
+                id="pl-org"
+                ariaLabel="Organisation"
+                placeholder="Search organisations to scope to one…"
+                disabled={orgs.isPending}
+                value={orgId}
+                onChange={setOrgId}
+                selectedLabel={buyerOrgOptions.find((o) => o.id === orgId)?.label}
+                query={orgQuery}
+                onQueryChange={setOrgQuery}
+                options={buyerOrgOptions}
+                emptyOption="Default (all buyers)"
+              />
+              {orgs.isError && <ErrorText error={orgs.error} />}
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="pl-name">Name</Label>

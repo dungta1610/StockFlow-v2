@@ -100,7 +100,13 @@ export class OrderController {
     const orders = await this.orders.list(
       this.uow.db,
       scope,
-      { status: q.status, orderCode: q.order_code, warehouseId: q.warehouse_id, buyerOrgId: q.buyer_org_id },
+      {
+        status: q.status,
+        orderCode: q.order_code,
+        warehouseId: q.warehouse_id,
+        buyerOrgId: q.buyer_org_id,
+        expiresWithinMinutes: q.expires_within_minutes,
+      },
       paging,
     );
     return { data: orders.map(presentOrder), paging };

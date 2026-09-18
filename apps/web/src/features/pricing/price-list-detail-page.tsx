@@ -3,10 +3,12 @@ import { Link, useParams } from '@tanstack/react-router';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState, ErrorState, ErrorText, LoadingRows } from '@/components/page-state';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select, Table, Td, Th } from '@/components/ui/primitives';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Table, Td, Th } from '@/components/ui/primitives';
+import { SearchSelect } from '@/components/ui/search-select';
 import { formatDateTime, formatMoney } from '@/lib/format';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
 import { isOpsAdmin, useRequiredSession } from '../auth/session';
-import { useActiveProducts } from '../catalog/catalog-api';
+import { useProductList } from '../catalog/catalog-api';
 import { useOrganizations } from '../orgs/orgs-api';
 import { useArchivePriceList, usePriceList, useUpsertPriceListItems } from './pricing-api';
 
@@ -126,9 +128,13 @@ function PriceListDetail({ list, canWrite }: { list: PriceListView; canWrite: bo
 }
 
 function AddTierForm({ priceListId }: { priceListId: string }) {
-  const products = useActiveProducts();
   const upsert = useUpsertPriceListItems(priceListId);
   const [productId, setProductId] = useState('');
+  const [productLabel, setProductLabel] = useState('');
+  const [productQuery, setProductQuery] = useState('');
+  const debouncedProductQuery = useDebouncedValue(productQuery);
+  const products = useProductList({ page: 1, is_active: true, name: debouncedProductQuery || undefined });
+  const productOptions = (products.data?.data ?? []).map((p) => ({ id: p.id, label: `${p.sku} — ${p.name}` }));
   const [minQty, setMinQty] = useState('1');
   const [unitPrice, setUnitPrice] = useState('');
   const qty = Number(minQty);
@@ -154,14 +160,20 @@ function AddTierForm({ priceListId }: { priceListId: string }) {
         >
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">Product</Label>
-            <Select aria-label="Product" value={productId} onChange={(e) => setProductId(e.target.value)} disabled={products.isPending}>
-              <option value="">Choose a product</option>
-              {products.data?.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.sku} — {p.name}
-                </option>
-              ))}
-            </Select>
+            <SearchSelect
+              ariaLabel="Product"
+              placeholder="Search products by name…"
+              value={productId}
+              onChange={(id) => {
+                setProductId(id);
+                setProductLabel(productOptions.find((o) => o.id === id)?.label ?? '');
+              }}
+              selectedLabel={productLabel}
+              query={productQuery}
+              onQueryChange={setProductQuery}
+              options={productOptions}
+              loading={products.isFetching}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label className="text-xs text-muted-foreground">Min qty</Label>

@@ -63,4 +63,6 @@ export interface OrderFilter {
   orderCode?: string;
   warehouseId?: string;
   buyerOrgId?: string;
+  /** Reservations screen: only holds ending within N minutes, sorted soonest first. */
+  expiresWithinMinutes?: number;
 }

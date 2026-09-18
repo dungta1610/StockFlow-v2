@@ -209,7 +209,30 @@ export class SqlOrderRepository extends OrderRepository {
     if (filter.orderCode) where.push(`o.order_code = ${bind(filter.orderCode)}`);
     if (filter.warehouseId) where.push(`o.warehouse_id = ${bind(filter.warehouseId)}`);
     if (filter.buyerOrgId) where.push(`o.buyer_org_id = ${bind(filter.buyerOrgId)}`);
-    return this.select(tx, scope, where.join(' AND '), params, `ORDER BY o.created_at DESC, o.id DESC`, paging);
+    // Reservations screen: reuses idx_orders_reserved_expiry (reservation_expires_at)
+    // WHERE status = 'reserved'. The status literal below (not a bound parameter) is
+    // what actually makes that index usable and this branch correct on its own —
+    // relying only on the bound `filter.status = 'reserved'` above is not enough:
+    // under a generic plan (repeatedly-executed prepared statements, or a pooler
+    // that prepares) Postgres cannot prove a bound `$n = 'reserved'` implies the
+    // index's own partial WHERE, and falls back to a full scan + sort (verified with
+    // EXPLAIN under plan_cache_mode=force_generic_plan). The literal also means a
+    // caller of `list()` that passes expiresWithinMinutes without a status filter —
+    // bypassing listOrdersQuerySchema, which always pairs them — can never get back
+    // a cancelled/fulfilled/expired order that still carries a non-null
+    // reservation_expires_at; this repository does not lean on the HTTP layer for
+    // that.
+    if (filter.expiresWithinMinutes !== undefined) {
+      where.push(`o.status = 'reserved'`);
+      where.push(
+        `o.reservation_expires_at IS NOT NULL AND o.reservation_expires_at <= now() + make_interval(mins => ${bind(filter.expiresWithinMinutes)})`,
+      );
+    }
+    const orderBy =
+      filter.expiresWithinMinutes !== undefined
+        ? `ORDER BY o.reservation_expires_at ASC, o.id ASC`
+        : `ORDER BY o.created_at DESC, o.id DESC`;
+    return this.select(tx, scope, where.join(' AND '), params, orderBy, paging);
   }
 
   /** Orders matching `where` inside `scope`, each with its lines — two queries in all. */

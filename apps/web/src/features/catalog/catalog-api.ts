@@ -59,10 +59,12 @@ export function useProductList(filter: ProductListFilter) {
   });
 }
 
+/** `id: ''` (nothing selected yet) skips the request instead of calling `/products/`. */
 export function useProduct(id: string) {
   return useQuery({
     queryKey: catalogKeys.products.detail(id),
     queryFn: () => api<{ data: ProductView }>(`/products/${id}`).then((r) => r.data),
+    enabled: id !== '',
   });
 }
 
@@ -105,10 +107,12 @@ export function useWarehouseList(filter: WarehouseListFilter) {
   });
 }
 
+/** `id: ''` (nothing selected yet) skips the request instead of calling `/warehouses/`. */
 export function useWarehouse(id: string) {
   return useQuery({
     queryKey: catalogKeys.warehouses.detail(id),
     queryFn: () => api<{ data: WarehouseView }>(`/warehouses/${id}`).then((r) => r.data),
+    enabled: id !== '',
   });
 }
 

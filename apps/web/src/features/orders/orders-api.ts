@@ -14,6 +14,8 @@ export interface OrderListFilter {
   status?: OrderStatusValue;
   order_code?: string;
   buyer_org_id?: string;
+  /** Reservations screen: only holds ending within N minutes, soonest first. */
+  expires_within_minutes?: number;
 }
 
 export type OrderAction = 'cancel' | 'expire' | 'mark-paid' | 'fulfill';

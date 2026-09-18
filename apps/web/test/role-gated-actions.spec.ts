@@ -51,6 +51,7 @@ describe('navItemsFor — hides screens the actor\'s role cannot reach', () => {
 
   it('ops sees the ops-only screens but not Users (ops alone cannot manage accounts)', () => {
     const items = labels(ops);
+    expect(items).toContain('Reservations');
     expect(items).toContain('Inventory');
     expect(items).toContain('Price lists');
     expect(items).toContain('Organisations');
@@ -62,6 +63,7 @@ describe('navItemsFor — hides screens the actor\'s role cannot reach', () => {
       'Orders',
       'Products',
       'Warehouses',
+      'Reservations',
       'Inventory',
       'Price lists',
       'Organisations',

@@ -1,8 +1,11 @@
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
+import { useState } from 'react';
 import { EmptyState, ErrorState, LoadingRows } from '@/components/page-state';
-import { Button, Card, Select, Table, Td, Th } from '@/components/ui/primitives';
+import { Button, Card, Table, Td, Th } from '@/components/ui/primitives';
+import { SearchSelect } from '@/components/ui/search-select';
 import { formatDateTime } from '@/lib/format';
-import { useActiveProducts, useActiveWarehouses } from '../catalog/catalog-api';
+import { useDebouncedValue } from '@/lib/use-debounced-value';
+import { useProduct, useProductList, useWarehouse, useWarehouseList } from '../catalog/catalog-api';
 import { useInventoryList } from './inventory-api';
 
 export interface InventorySearch {
@@ -25,8 +28,27 @@ export function InventoryListPage() {
   const navigate = useNavigate({ from: '/inventory' });
   const page = search.page ?? 1;
   const inventory = useInventoryList({ ...search, page });
-  const products = useActiveProducts();
-  const warehouses = useActiveWarehouses();
+
+  const [productQuery, setProductQuery] = useState('');
+  const debouncedProductQuery = useDebouncedValue(productQuery);
+  const products = useProductList({ page: 1, name: debouncedProductQuery || undefined });
+  const productOptions = (products.data?.data ?? []).map((p) => ({ id: p.id, label: `${p.sku} — ${p.name}` }));
+  // The selected product may be outside the current search page (or the URL was
+  // reloaded directly with ?product_id=): fall back to fetching it by id so the
+  // label never silently goes blank while the filter is still active.
+  const selectedProduct = useProduct(search.product_id ?? '');
+  const selectedProductLabel =
+    productOptions.find((o) => o.id === search.product_id)?.label ??
+    (selectedProduct.data ? `${selectedProduct.data.sku} — ${selectedProduct.data.name}` : undefined);
+
+  const [warehouseQuery, setWarehouseQuery] = useState('');
+  const debouncedWarehouseQuery = useDebouncedValue(warehouseQuery);
+  const warehouses = useWarehouseList({ page: 1, name: debouncedWarehouseQuery || undefined });
+  const warehouseOptions = (warehouses.data?.data ?? []).map((w) => ({ id: w.id, label: `${w.code} — ${w.name}` }));
+  const selectedWarehouse = useWarehouse(search.warehouse_id ?? '');
+  const selectedWarehouseLabel =
+    warehouseOptions.find((o) => o.id === search.warehouse_id)?.label ??
+    (selectedWarehouse.data ? `${selectedWarehouse.data.code} — ${selectedWarehouse.data.name}` : undefined);
 
   const setFilter = (patch: InventorySearch) =>
     navigate({ search: (prev) => ({ ...prev, ...patch, page: patch.page && patch.page > 1 ? patch.page : undefined }) });
@@ -40,30 +62,30 @@ export function InventoryListPage() {
 
       <Card>
         <div className="grid gap-3 border-b p-3 sm:grid-cols-2">
-          <Select
-            aria-label="Product"
+          <SearchSelect
+            ariaLabel="Product"
+            placeholder="Search products by name…"
             value={search.product_id ?? ''}
-            onChange={(e) => setFilter({ product_id: e.target.value || undefined })}
-          >
-            <option value="">All products</option>
-            {products.data?.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.sku} — {p.name}
-              </option>
-            ))}
-          </Select>
-          <Select
-            aria-label="Warehouse"
+            onChange={(id) => setFilter({ product_id: id || undefined })}
+            selectedLabel={selectedProductLabel}
+            query={productQuery}
+            onQueryChange={setProductQuery}
+            options={productOptions}
+            loading={products.isFetching}
+            emptyOption="All products"
+          />
+          <SearchSelect
+            ariaLabel="Warehouse"
+            placeholder="Search warehouses by name…"
             value={search.warehouse_id ?? ''}
-            onChange={(e) => setFilter({ warehouse_id: e.target.value || undefined })}
-          >
-            <option value="">All warehouses</option>
-            {warehouses.data?.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.code} — {w.name}
-              </option>
-            ))}
-          </Select>
+            onChange={(id) => setFilter({ warehouse_id: id || undefined })}
+            selectedLabel={selectedWarehouseLabel}
+            query={warehouseQuery}
+            onQueryChange={setWarehouseQuery}
+            options={warehouseOptions}
+            loading={warehouses.isFetching}
+            emptyOption="All warehouses"
+          />
         </div>
 
         {inventory.isPending ? (

@@ -14,5 +14,5 @@
       "@stockflow/contracts": ["../../packages/contracts/src/index.ts"]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "vite.config.ts", "test", "e2e", "playwright.config.ts"]
 }

@@ -7,7 +7,15 @@ import { Badge, Button } from './components/ui/primitives';
 import { canManageUsers, isOps, useSession } from './features/auth/session';
 import { logout } from './lib/api-client';
 
-type NavTo = '/orders' | '/catalog/products' | '/catalog/warehouses' | '/inventory' | '/price-lists' | '/organizations' | '/users';
+type NavTo =
+  | '/orders'
+  | '/catalog/products'
+  | '/catalog/warehouses'
+  | '/reservations'
+  | '/inventory'
+  | '/price-lists'
+  | '/organizations'
+  | '/users';
 
 /** Which screens the current session may see, gated by the same roles the API enforces. */
 export function navItemsFor(session: SessionView): { to: NavTo; label: string }[] {
@@ -17,7 +25,12 @@ export function navItemsFor(session: SessionView): { to: NavTo; label: string }[
     { to: '/catalog/warehouses', label: 'Warehouses' },
   ];
   if (isOps(session)) {
-    items.push({ to: '/inventory', label: 'Inventory' }, { to: '/price-lists', label: 'Price lists' }, { to: '/organizations', label: 'Organisations' });
+    items.push(
+      { to: '/reservations', label: 'Reservations' },
+      { to: '/inventory', label: 'Inventory' },
+      { to: '/price-lists', label: 'Price lists' },
+      { to: '/organizations', label: 'Organisations' },
+    );
   }
   if (canManageUsers(session)) items.push({ to: '/users', label: 'Users' });
   return items;

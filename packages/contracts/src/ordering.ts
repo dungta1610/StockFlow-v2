@@ -36,13 +36,33 @@ export type CreateOrderRequest = z.infer<typeof createOrderRequestSchema>;
 /** `Idempotency-Key` header: visible ASCII, the length a UUID or ULID needs and some room. */
 export const idempotencyKeySchema = z.string().regex(/^[\x21-\x7e]{1,200}$/, 'must be 1-200 visible ASCII characters');
 
-export const listOrdersQuerySchema = pagingQuerySchema.extend({
-  status: orderStatusSchema.optional(),
-  order_code: z.string().trim().toUpperCase().min(1).max(50).optional(),
-  warehouse_id: uuidSchema.optional(),
-  /** Ops only narrows by customer; a buyer only ever sees their own organisation. */
-  buyer_org_id: uuidSchema.optional(),
-});
+/** Query-string integer, 1..max: absent or blank means "not provided". */
+const optionalQueryIntUpTo = (max: number) =>
+  z.preprocess(
+    (v) => (v === undefined || (typeof v === 'string' && v.trim() === '') ? undefined : Number(v)),
+    z.number().int().min(1).max(max).optional(),
+  );
+
+export const listOrdersQuerySchema = pagingQuerySchema
+  .extend({
+    status: orderStatusSchema.optional(),
+    order_code: z.string().trim().toUpperCase().min(1).max(50).optional(),
+    warehouse_id: uuidSchema.optional(),
+    /** Ops only narrows by customer; a buyer only ever sees their own organisation. */
+    buyer_org_id: uuidSchema.optional(),
+    /**
+     * Reservations screen: only `reserved` orders whose hold ends within N minutes
+     * (overdue holds included), sorted soonest first instead of newest-first. Implies
+     * `status=reserved` when `status` is not given; explicitly combining it with any
+     * other status is rejected rather than silently ignored.
+     */
+    expires_within_minutes: optionalQueryIntUpTo(10_080), // up to 7 days
+  })
+  .refine((q) => q.expires_within_minutes === undefined || q.status === undefined || q.status === 'reserved', {
+    message: 'expires_within_minutes only applies to status=reserved',
+    path: ['expires_within_minutes'],
+  })
+  .transform((q) => (q.expires_within_minutes !== undefined && q.status === undefined ? { ...q, status: 'reserved' as const } : q));
 export type ListOrdersQuery = z.infer<typeof listOrdersQuerySchema>;
 
 export interface OrderItemView {

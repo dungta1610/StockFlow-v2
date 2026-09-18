@@ -1,7 +1,8 @@
 import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
 import { AppLayout } from './app-layout';
 import { LoginPage } from './features/auth/login-page';
-import { ensureSession } from './features/auth/session';
+import { canManageUsers, ensureSession, isOps, isOpsAdmin } from './features/auth/session';
+import { getSession } from './lib/auth-store';
 import { NewProductPage } from './features/catalog/new-product-page';
 import { NewWarehousePage } from './features/catalog/new-warehouse-page';
 import { ProductDetailPage } from './features/catalog/product-detail-page';
@@ -13,6 +14,7 @@ import { InventoryListPage, validateInventorySearch } from './features/inventory
 import { NewOrderPage } from './features/orders/new-order-page';
 import { OrderDetailPage } from './features/orders/order-detail-page';
 import { OrdersListPage, validateOrdersSearch } from './features/orders/orders-list-page';
+import { ReservationsListPage, validateReservationsSearch } from './features/orders/reservations-list-page';
 import { NewOrganizationPage } from './features/orgs/new-organization-page';
 import { OrganizationDetailPage } from './features/orgs/organization-detail-page';
 import { OrganizationsListPage, validateOrganizationsSearch } from './features/orgs/organizations-list-page';
@@ -79,6 +81,19 @@ const orderRoute = createRoute({
   component: OrderDetailPage,
 });
 
+const reservationsRoute = createRoute({
+  getParentRoute: () => authedRoute,
+  path: '/reservations',
+  validateSearch: validateReservationsSearch,
+  // Ops only. A pasted URL for a buyer bounces to their own orders instead of
+  // flashing a screen the API would 403 every request on.
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !isOps(session)) throw redirect({ to: '/orders' });
+  },
+  component: ReservationsListPage,
+});
+
 const inventoryRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/inventory',
@@ -102,6 +117,10 @@ const productsRoute = createRoute({
 const newProductRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/catalog/products/new',
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !isOpsAdmin(session)) throw redirect({ to: '/catalog/products' });
+  },
   component: NewProductPage,
 });
 
@@ -121,6 +140,10 @@ const warehousesRoute = createRoute({
 const newWarehouseRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/catalog/warehouses/new',
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !isOpsAdmin(session)) throw redirect({ to: '/catalog/warehouses' });
+  },
   component: NewWarehousePage,
 });
 
@@ -140,6 +163,13 @@ const priceListsRoute = createRoute({
 const newPriceListRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/price-lists/new',
+  beforeLoad: () => {
+    const session = getSession();
+    // Unlike /catalog/products and /organizations, GET /price-lists is itself
+    // ops-only — bouncing a buyer to /price-lists would just trade one 403 for
+    // another, so send them to a screen they can actually see instead.
+    if (session && !isOpsAdmin(session)) throw redirect({ to: isOps(session) ? '/price-lists' : '/orders' });
+  },
   component: NewPriceListPage,
 });
 
@@ -159,6 +189,10 @@ const organizationsRoute = createRoute({
 const newOrganizationRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/organizations/new',
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !isOpsAdmin(session)) throw redirect({ to: '/organizations' });
+  },
   component: NewOrganizationPage,
 });
 
@@ -178,6 +212,10 @@ const usersRoute = createRoute({
 const newUserRoute = createRoute({
   getParentRoute: () => authedRoute,
   path: '/users/new',
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !canManageUsers(session)) throw redirect({ to: '/users' });
+  },
   component: NewUserPage,
 });
 
@@ -194,6 +232,7 @@ const routeTree = rootRoute.addChildren([
     ordersRoute,
     newOrderRoute,
     orderRoute,
+    reservationsRoute,
     inventoryRoute,
     inventoryDetailRoute,
     productsRoute,

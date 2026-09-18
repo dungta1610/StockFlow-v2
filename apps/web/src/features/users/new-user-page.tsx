@@ -4,6 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { ErrorState, ErrorText, LoadingRows } from '@/components/page-state';
 import { Button, Card, CardContent, CardHeader, CardTitle, Input, Label, Select } from '@/components/ui/primitives';
+import { SearchSelect } from '@/components/ui/search-select';
 import { useOrganizations } from '../orgs/orgs-api';
 import { rolesForOrgType, useCreateUser } from './users-api';
 
@@ -16,10 +17,14 @@ export function NewUserPage() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [orgId, setOrgId] = useState('');
+  const [orgQuery, setOrgQuery] = useState('');
   const [role, setRole] = useState<RoleValue | ''>('');
 
   const org = orgs.data?.find((o) => o.id === orgId);
   const roleOptions = useMemo(() => (org ? rolesForOrgType(org.type) : []), [org]);
+  const orgOptions = (orgs.data ?? [])
+    .filter((o) => `${o.code} ${o.name}`.toLowerCase().includes(orgQuery.trim().toLowerCase()))
+    .map((o) => ({ id: o.id, label: `${o.code} — ${o.name}` }));
 
   return (
     <div className="flex flex-col gap-4">
@@ -67,22 +72,20 @@ export function NewUserPage() {
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="nu-org">Organisation</Label>
-                <Select
+                <SearchSelect
                   id="nu-org"
+                  ariaLabel="Organisation"
+                  placeholder="Search organisations…"
                   value={orgId}
-                  onChange={(e) => {
-                    setOrgId(e.target.value);
+                  onChange={(id) => {
+                    setOrgId(id);
                     setRole('');
                   }}
-                  required
-                >
-                  <option value="">Choose an organisation</option>
-                  {orgs.data.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.code} — {o.name}
-                    </option>
-                  ))}
-                </Select>
+                  selectedLabel={orgOptions.find((o) => o.id === orgId)?.label}
+                  query={orgQuery}
+                  onQueryChange={setOrgQuery}
+                  options={orgOptions}
+                />
               </div>
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="nu-role">Role</Label>

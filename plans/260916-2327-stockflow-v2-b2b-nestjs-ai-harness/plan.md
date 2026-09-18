@@ -50,7 +50,7 @@ Học sâu kiến trúc + AI. Thước đo là *mỗi thứ build ra dạy đư�
 | 06 | ~~Payment (Simulated)~~ | **cancelled** | — | — | — |
 | 07 | [packages/ai-harness Extraction](phase-07-ai-harness-package.md) | pending | P1 | 00 | 6 ngày |
 | 08 | [Ops Copilot](phase-08-ops-copilot.md) | pending | P1 | 02, 03, 04, 07 | 4 ngày |
-| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | in-progress (làm sớm, đợt 1/4) | P1 | 05, 08 | 5 ngày |
+| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | in-progress (xong trừ Copilot — chờ 07/08) | P1 | 05, 08 | 5 ngày |
 | 10 | ~~Buyer Portal~~ | **cancelled** | — | — | — |
 | 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | pending | P2 | 09 | 3 ngày |
 
