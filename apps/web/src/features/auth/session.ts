@@ -31,3 +31,5 @@ export function ensureSession(): Promise<SessionView | null> {
 
 export const isOps = (s: SessionView) => s.acting_as.org_type === 'internal';
 export const isOpsAdmin = (s: SessionView) => isOps(s) && s.acting_as.role === 'ops_admin';
+/** ops_admin or buyer_admin: the only roles /users lets through at all. */
+export const canManageUsers = (s: SessionView) => s.acting_as.role === 'ops_admin' || s.acting_as.role === 'buyer_admin';

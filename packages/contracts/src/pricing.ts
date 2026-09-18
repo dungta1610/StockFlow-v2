@@ -36,6 +36,7 @@ export const upsertPriceListItemsRequestSchema = z.object({
 export type UpsertPriceListItemsRequest = z.infer<typeof upsertPriceListItemsRequestSchema>;
 
 export const priceListStatusSchema = z.enum(['active', 'archived']);
+export type PriceListStatusValue = z.infer<typeof priceListStatusSchema>;
 
 export const listPriceListsQuerySchema = pagingQuerySchema.extend({
   org_id: uuidSchema.optional(),
@@ -59,7 +60,7 @@ export interface PriceListView {
   valid_from: string;
   valid_to: string | null;
   priority: number;
-  status: z.infer<typeof priceListStatusSchema>;
+  status: PriceListStatusValue;
   created_at: string;
   updated_at: string;
   items?: PriceListItemView[];

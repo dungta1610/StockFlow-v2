@@ -4,7 +4,9 @@ import { pagingQuerySchema, queryBoolSchema, uuidSchema } from './common';
 // JSON field names are snake_case, matching StockFlow's (Go) API.
 
 export const orgTypeSchema = z.enum(['buyer', 'internal']);
+export type OrgTypeValue = z.infer<typeof orgTypeSchema>;
 export const roleSchema = z.enum(['buyer', 'buyer_admin', 'ops', 'ops_admin']);
+export type RoleValue = z.infer<typeof roleSchema>;
 
 const email = z.string().trim().toLowerCase().pipe(z.email());
 const password = z.string().min(1);

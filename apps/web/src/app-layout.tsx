@@ -1,13 +1,27 @@
+import type { SessionView } from '@stockflow/contracts';
 import { Link, Outlet, useNavigate } from '@tanstack/react-router';
 import { LogOut } from 'lucide-react';
 import { useEffect } from 'react';
 import { ThemeToggle } from './components/theme-toggle';
 import { Badge, Button } from './components/ui/primitives';
-import { useSession } from './features/auth/session';
+import { canManageUsers, isOps, useSession } from './features/auth/session';
 import { logout } from './lib/api-client';
 
-/** Screens added so far. Each increment adds its entry here. */
-const NAV = [{ to: '/orders', label: 'Orders' }] as const;
+type NavTo = '/orders' | '/catalog/products' | '/catalog/warehouses' | '/inventory' | '/price-lists' | '/organizations' | '/users';
+
+/** Which screens the current session may see, gated by the same roles the API enforces. */
+export function navItemsFor(session: SessionView): { to: NavTo; label: string }[] {
+  const items: { to: NavTo; label: string }[] = [
+    { to: '/orders', label: 'Orders' },
+    { to: '/catalog/products', label: 'Products' },
+    { to: '/catalog/warehouses', label: 'Warehouses' },
+  ];
+  if (isOps(session)) {
+    items.push({ to: '/inventory', label: 'Inventory' }, { to: '/price-lists', label: 'Price lists' }, { to: '/organizations', label: 'Organisations' });
+  }
+  if (canManageUsers(session)) items.push({ to: '/users', label: 'Users' });
+  return items;
+}
 
 export function AppLayout() {
   const session = useSession();
@@ -18,6 +32,7 @@ export function AppLayout() {
     if (!session) void navigate({ to: '/login', search: { redirect: location.pathname } });
   }, [session, navigate]);
   if (!session) return null;
+  const nav = navItemsFor(session);
 
   return (
     <div className="min-h-screen">
@@ -26,8 +41,8 @@ export function AppLayout() {
           <Link to="/orders" className="font-semibold tracking-tight">
             StockFlow
           </Link>
-          <nav className="flex gap-1">
-            {NAV.map((item) => (
+          <nav className="flex flex-wrap gap-1">
+            {nav.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}

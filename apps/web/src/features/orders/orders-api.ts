@@ -1,16 +1,13 @@
-import type {
-  CreateOrderRequest,
-  InventoryTransactionView,
-  OrderStatusValue,
-  OrderView,
-  OrganizationView,
-  PagingMeta,
-  ProductView,
-  QuoteView,
-  WarehouseView,
-} from '@stockflow/contracts';
+import type { CreateOrderRequest, InventoryTransactionView, OrderStatusValue, OrderView, PagingMeta } from '@stockflow/contracts';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
+
+// Reference data the order screens build from now lives with its own domain
+// (features/catalog, features/orgs, features/pricing); re-exported here so the
+// order screens' imports do not have to change.
+export { useActiveWarehouses as useWarehouses, useActiveProducts as useProducts } from '../catalog/catalog-api';
+export { useOrganizations } from '../orgs/orgs-api';
+export { useQuote } from '../pricing/pricing-api';
 
 export interface OrderListFilter {
   page: number;
@@ -78,44 +75,5 @@ export function useCreateOrder() {
         headers: { 'Idempotency-Key': idempotencyKey },
       }).then((r) => r.data),
     onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.all }),
-  });
-}
-
-// ── Reference data used by the order screens ─────────────────────────
-
-export function useWarehouses() {
-  return useQuery({
-    queryKey: ['warehouses', 'active'],
-    queryFn: () =>
-      api<{ data: WarehouseView[] }>('/warehouses', { query: { is_active: true, limit: 100 } }).then((r) => r.data),
-    staleTime: 60_000,
-  });
-}
-
-export function useProducts() {
-  return useQuery({
-    queryKey: ['products', 'active'],
-    queryFn: () =>
-      api<{ data: ProductView[] }>('/products', { query: { is_active: true, limit: 100 } }).then((r) => r.data),
-    staleTime: 60_000,
-  });
-}
-
-/** Organisations in the caller's scope: every one for ops, their own for a buyer. */
-export function useOrganizations() {
-  return useQuery({
-    queryKey: ['organizations'],
-    queryFn: () => api<{ data: OrganizationView[] }>('/organizations', { query: { limit: 100 } }).then((r) => r.data),
-    staleTime: 60_000,
-  });
-}
-
-/** Server-side prices for a draft cart: the same resolver the order will use. */
-export function useQuote(items: { product_id: string; qty: number }[]) {
-  return useQuery({
-    queryKey: ['quote', items],
-    queryFn: () => api<{ data: QuoteView }>('/pricing/quote', { method: 'POST', body: { items } }).then((r) => r.data),
-    enabled: items.length > 0,
-    placeholderData: keepPreviousData,
   });
 }
