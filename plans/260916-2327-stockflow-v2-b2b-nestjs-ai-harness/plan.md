@@ -52,7 +52,7 @@ Học sâu kiến trúc + AI. Thước đo là *mỗi thứ build ra dạy đư�
 | 08 | [Ops Copilot](phase-08-ops-copilot.md) | pending | P1 | 02, 03, 04, 07 | 4 ngày |
 | 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | in-progress (xong trừ Copilot — chờ 07/08) | P1 | 05, 08 | 5 ngày |
 | 10 | ~~Buyer Portal~~ | **cancelled** | — | — | — |
-| 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | pending | P2 | 09 | 3 ngày |
+| 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | in-progress (xong phần không-AI) | P2 | 09 | 3 ngày |
 
 **Tổng ≈ 39 ngày làm việc ≈ 8 tuần.**
 
@@ -231,6 +231,7 @@ Isolation: **READ COMMITTED** đặt tường minh, `lock_timeout=5s`, `statemen
 - **Files reread:** `plan.md` + cả 12 `phase-*.md`.
 - **Decision deltas checked:** 9 — bỏ trạng thái `releasing`; `orgId` trần → `OrgScope`; transaction tường minh `tx: Tx`; bỏ `ChainPriceResolver`; `markPaid` chuyển từ Phase 06 sang 04; cắt Phase 06 và 10; outbox một nguồn sự thật; job/dispatcher chuyển từ `platform/` sang `modules/`; `MemoryStore` dùng chữ ký thật.
 - **Reconciled stale references:** 1 — migration nhảy `007 → 009` do Phase 06 (cancelled) từng giữ `008`. Đánh số lại `009_ai_memory → 008`, `010_copilot → 009`; giờ liền mạch 001–009. Gap vô hại về chức năng nhưng là đúng cái bẫy "thứ tự applied lệch thứ tự tên" mà Phase 00 cảnh báo.
+- **Cập nhật 2026-09-19:** `008` giờ là `008_list_query_indexes.sql` (hardening Phase 11 làm trước 07/08). Migration AI lùi thành `009_ai_memory` và `010_copilot` — đã sửa trong phase-07/08.
 - **Unresolved contradictions: 0.**
 
 Đã quét và xác nhận sạch: không file nào còn coi `releasing` là trạng thái sống (hit duy nhất là dòng verify script *kiểm tra sự vắng mặt* của nó); `ChainPriceResolver` biến mất hoàn toàn; `/ops/dashboard` chỉ còn trong ghi chú nói nó đã bị bỏ; tham chiếu Phase 06/10 chỉ nằm trong chính hai file cancelled để ghi lại lý do; ADR 0001–0025 liên tục, không trùng không sót; dependency graph khớp bảng phases; tổng ước lượng 39–40 ngày khớp con số công bố.

@@ -1,6 +1,7 @@
-import { type CanActivate, type ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AccessTokenService } from '../application/ports/access-token.service';
+import { IdentityErrors } from '../domain/errors';
 import { type AuthenticatedRequest, IS_PUBLIC } from './auth.decorators';
 
 /**
@@ -23,10 +24,10 @@ export class JwtAuthGuard implements CanActivate {
 
     const req = ctx.switchToHttp().getRequest<AuthenticatedRequest>();
     const [scheme, token] = (req.header('authorization') ?? '').split(' ');
-    if (scheme !== 'Bearer' || !token) throw new UnauthorizedException('Missing bearer token.');
+    if (scheme !== 'Bearer' || !token) throw IdentityErrors.missingToken();
 
     const actor = await this.tokens.verify(token);
-    if (!actor) throw new UnauthorizedException('Invalid or expired token.');
+    if (!actor) throw IdentityErrors.invalidToken();
     req.actor = actor;
     return true;
   }

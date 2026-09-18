@@ -1,5 +1,6 @@
-import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
+import { forbidden } from '../../../platform/errors/domain-error';
 import { hasRole } from '../domain/actor';
 import type { Role } from '../domain/role';
 import { type AuthenticatedRequest, REQUIRED_ROLES } from './auth.decorators';
@@ -18,7 +19,10 @@ export class RolesGuard implements CanActivate {
 
     const actor = ctx.switchToHttp().getRequest<AuthenticatedRequest>().actor;
     if (!actor || !hasRole(actor, ...required)) {
-      throw new ForbiddenException('You do not have the role required for this action.');
+      // Same message and code as assertRole (modules/identity/domain/actor.ts): a
+      // caller that slips past the route guard hits the identical check again in
+      // the use case, so both paths must render the same failure.
+      throw forbidden('You do not have the role required for this action.');
     }
     return true;
   }

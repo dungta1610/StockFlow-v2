@@ -18,12 +18,6 @@ export function isUniqueViolation(err: unknown, constraint?: string): boolean {
   return e?.code === '23505' && (constraint === undefined || e.constraint === constraint);
 }
 
-/** Postgres foreign_key_violation, optionally for a specific constraint. */
-export function isForeignKeyViolation(err: unknown, constraint?: string): boolean {
-  const e = err as { code?: string; constraint?: string };
-  return e?.code === '23503' && (constraint === undefined || e.constraint === constraint);
-}
-
 /** Treats `%`, `_` and `\` in user input literally inside LIKE / ILIKE. */
 export const escapeLike = (s: string): string => s.replace(/[\\%_]/g, (c) => `\\${c}`);
 

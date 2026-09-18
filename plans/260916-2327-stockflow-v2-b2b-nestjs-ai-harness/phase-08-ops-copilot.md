@@ -135,7 +135,7 @@ memory: { scope: (ctx) => `org:${ctx.principal.tenantId}`, strategies: ['semanti
 
 Lưu ý trung thực: mọi ops user cùng ở org `internal` nên chung namespace `org:<internal>`. Đó là **đúng ý đồ** (kiến thức vận hành dùng chung), không phải lỗ hổng — nhưng nghĩa là test cách ly memory phải dùng hai tenant thật (một internal, một buyer) mới có ý nghĩa.
 
-### Schema (migration `009_copilot.sql`)
+### Schema (migration `010_copilot.sql`)
 
 ```sql
 stock_adjustment_proposals(
@@ -163,7 +163,7 @@ create index on stock_adjustment_proposals (status, created_at desc);
 ## Related Code Files
 
 **Create**
-- `db/migrations/009_copilot.sql`
+- `db/migrations/010_copilot.sql`
 - `apps/api/src/modules/copilot/**`
 - `packages/contracts/src/copilot.ts`
 - `docs/adr/0023-agent-tools-call-services-not-repositories.md`
@@ -213,7 +213,7 @@ create index on stock_adjustment_proposals (status, created_at desc);
 
 ## Implementation Steps
 
-1. Migration `009_copilot.sql`.
+1. Migration `010_copilot.sql`.
 2. Viết 19 test — đỏ. **Nhóm A trước**, chúng định hình hợp đồng tool.
 3. **Rà** bề mặt application mà tool cần: `InventoryService.getStatus`, `LedgerService.history` (Phase 03), `OrderService.list/diagnose`, `ReservationService.listExpiring` (Phase 04), `PriceResolver.resolve` (Phase 02). Tất cả **đã** nhận `OrgScope` đầu tiên — chỉ bổ sung trường hợp thiếu, **không tạo bề mặt mới ở đây**.
 4. `copilot-context.ts` — `Actor` → `RunContext`; `ActorDeps.resolve(ctx)` → `{actor, scope}`.

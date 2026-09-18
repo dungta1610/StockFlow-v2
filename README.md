@@ -205,7 +205,8 @@ db/migrations/
 ├── 004_pricing.sql        # price_lists, price_list_items
 ├── 005_inventory.sql      # inventory, inventory_transactions (ledger)
 ├── 006_ordering.sql       # orders, order_items, inventory_reservations, outbox_events, idempotency_keys
-└── 007_outbox_audit.sql   # audit_log
+├── 007_outbox_audit.sql   # audit_log
+└── 008_list_query_indexes.sql  # sort indexes for the audit and ledger lists
 
 docs/
 ├── system-architecture.md     # Five chapters: concurrency, pricing, outbox, multi-tenancy, agent (planned)

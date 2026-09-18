@@ -1,0 +1,23 @@
+-- Indexes found missing by running EXPLAIN (ANALYZE, BUFFERS) on every list-with-filter
+-- query the HTTP layer exposes, against 100k orders / 200k ledger rows / 120k outbox events /
+-- 100k audit rows / 3k products / 3k users. Every other filter combination already
+-- had a usable index (buyer_org_id, product_id, warehouse_id, order_id, inventory_id,
+-- reservation_id, aggregate_type+aggregate_id, org_id, status='pending'/'reserved',
+-- the unique keys). Only these two tables had no index at all covering their default
+-- sort column, so a caller who passes no filter (or one that does not match any
+-- existing index) forced a full scan + sort of the whole table:
+--
+-- * audit_log has idx_audit_aggregate and idx_audit_org, but nothing for
+--   `GET /ops/audit` browsed with no aggregate/org filter, or filtered by
+--   event_type alone (ops hunting for e.g. every order.cancelled row across
+--   organisations) — modules/audit/infrastructure/sql-audit.repository.ts `list()`.
+-- * inventory_transactions has per-FK indexes (inventory_id, product_id,
+--   warehouse_id, order_id, reservation_id) but nothing for `GET
+--   /inventories/transactions` browsed with no filter, or filtered by txn_type
+--   alone — modules/inventory/infrastructure/sql-ledger.repository.ts `list()`.
+--
+-- Both queries ORDER BY <col> DESC, id DESC with LIMIT/OFFSET paging, the same shape
+-- idx_orders_created and idx_products_created already serve for orders/products; these
+-- two indexes are that same pattern applied to the two tables that were missing it.
+CREATE INDEX idx_audit_occurred ON audit_log (occurred_at DESC, id DESC);
+CREATE INDEX idx_inventory_transactions_created ON inventory_transactions (created_at DESC, id DESC);

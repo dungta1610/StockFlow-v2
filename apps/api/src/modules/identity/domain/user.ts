@@ -18,6 +18,3 @@ export interface User {
   updatedAt: Date;
   memberships: Membership[];
 }
-
-/** Ported from StockFlow's user Filter.Normalize(): trim, lower-case email. */
-export const normalizeEmail = (email: string): string => email.trim().toLowerCase();

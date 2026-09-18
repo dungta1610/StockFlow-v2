@@ -26,7 +26,12 @@ describe('authentication and role guards', () => {
     const tampered = good.slice(0, -3) + (good.endsWith('abc') ? 'xyz' : 'abc');
 
     for (const auth of ['Bearer nope', 'Basic abc', tampered]) {
-      expect((await request(server()).get('/users').set('Authorization', auth)).status).toBe(401);
+      const res = await request(server()).get('/users').set('Authorization', auth);
+      expect(res.status).toBe(401);
+      // Missing scheme (Basic abc) and an invalid/tampered bearer token are different
+      // situations but the same failure from the caller's point of view, so both
+      // render the same code as the no-token case above.
+      expect(res.body.error.code).toBe('UNAUTHORIZED');
     }
   });
 
@@ -40,6 +45,7 @@ describe('authentication and role guards', () => {
     );
     const res = await request(server()).get('/users').set('Authorization', `Bearer ${expired}`);
     expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('UNAUTHORIZED');
   });
 
   it('lets public routes through without a token', async () => {
@@ -50,7 +56,11 @@ describe('authentication and role guards', () => {
     await seedTenants();
     const post = (auth: string) => request(server()).post('/organizations').set('Authorization', auth).send(newOrg);
 
-    expect((await post(await bearer(server(), 'ops@sf.test'))).status).toBe(403);
+    const denied = await post(await bearer(server(), 'ops@sf.test'));
+    expect(denied.status).toBe(403);
+    // Same code the use-case-level assertRole check renders (use-case-authorization.spec.ts):
+    // the route guard and the service check are the same failure to a caller.
+    expect(denied.body.error.code).toBe('FORBIDDEN');
     expect((await post(await bearer(server(), 'admin@a.test'))).status).toBe(403);
     expect((await post(await bearer(server(), 'buyer@a.test'))).status).toBe(403);
 
@@ -60,12 +70,13 @@ describe('authentication and role guards', () => {
 
   it('allows user administration only to admin roles', async () => {
     await seedTenants();
-    const list = async (email: string) =>
-      (await request(server()).get('/users').set('Authorization', await bearer(server(), email))).status;
+    const list = async (email: string) => request(server()).get('/users').set('Authorization', await bearer(server(), email));
 
-    expect(await list('buyer@a.test')).toBe(403);
-    expect(await list('ops@sf.test')).toBe(403);
-    expect(await list('admin@a.test')).toBe(200);
-    expect(await list('ops.admin@sf.test')).toBe(200);
+    const buyerDenied = await list('buyer@a.test');
+    expect(buyerDenied.status).toBe(403);
+    expect(buyerDenied.body.error.code).toBe('FORBIDDEN');
+    expect((await list('ops@sf.test')).status).toBe(403);
+    expect((await list('admin@a.test')).status).toBe(200);
+    expect((await list('ops.admin@sf.test')).status).toBe(200);
   });
 });

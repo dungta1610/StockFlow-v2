@@ -212,7 +212,7 @@ Phase 00 spike đã trả lời: Strands có phát event quan sát được hay 
 
 Cách nào cũng phải bọc handler để đo `durationMs` và phát `tool_start`/`tool_end` — phần đó ta tự làm, không phụ thuộc SDK.
 
-### Schema (migration `008_ai_memory.sql`, schema `ai`)
+### Schema (migration `009_ai_memory.sql`, schema `ai`)
 
 Port 5 file từ `AI-Harness-Clone/db/init/`, đưa vào schema `ai`, **cộng ba thay đổi**:
 - `ai.chat_sessions` thêm `tenant_id`, `owner_user_id` (NOT NULL).
@@ -226,7 +226,7 @@ Bản gốc hiệu chuẩn 0.28 cho Cohere Embed Multilingual v3 (không liên q
 ## Related Code Files
 
 **Create**
-- `db/migrations/008_ai_memory.sql`
+- `db/migrations/009_ai_memory.sql`
 - `packages/ai-harness/src/**` (cấu trúc ở §Architecture)
 - `packages/ai-harness/{package.json,tsconfig.json}`
 - `docs/adr/0020-ai-harness-as-package.md`
@@ -256,7 +256,7 @@ Bản gốc hiệu chuẩn 0.28 cho Cohere Embed Multilingual v3 (không liên q
 3. `harness/rrf-fusion.spec.ts` — hàm thuần: thứ tự RRF đúng công thức; tài liệu ở cả hai nhánh được đẩy lên.
 4. `harness/lexical-diacritics.spec.ts` — lưu "Khánh thích cà phê đen", query "Khanh" ⇒ nhánh lexical khớp.
 5. `harness/score-floor.spec.ts` — bộ câu hỏi đã gán nhãn ⇒ floor hiện tại phân tách đúng. **Fail nếu đổi embedding model mà chưa đo lại.**
-6. **`harness/embedding-dimension-matches-migration.spec.ts`** — số chiều gateway trả về **khớp** `vector(N)` trong migration 008.
+6. **`harness/embedding-dimension-matches-migration.spec.ts`** — số chiều gateway trả về **khớp** `vector(N)` trong migration 009.
 7. `harness/consolidation-invariant-1.spec.ts` — fact ghi qua `upsert` vào scope trần; consolidation với fact mâu thuẫn ⇒ row scope trần **bị supersede**.
 8. `harness/consolidation-invariant-2.spec.ts` — hội thoại **đúng 1 lượt** ⇒ consolidation **có** chạy. Pass lỗi ⇒ marker vẫn tiến, không thử lại vô hạn, và **pass sau đọc lại toàn bộ transcript** nên nội dung không mất.
 9. **`harness/forroot-validates-cadence.spec.ts`** — `consolidateAfterMessages > 2` ⇒ `forRoot` ném lỗi lúc boot.
@@ -271,7 +271,7 @@ Bản gốc hiệu chuẩn 0.28 cho Cohere Embed Multilingual v3 (không liên q
 ## Implementation Steps
 
 1. **Đọc lại kết luận spike Phase 00** về tool event — nó quyết định bước 10 tốn 0.5 hay 3 ngày.
-2. Migration `008_ai_memory.sql`: port 5 file, `vector(N)` theo số đo spike, `chat_sessions` thêm `tenant_id`/`owner_user_id`, `embedding_cache` có `input_type` trong PK.
+2. Migration `009_ai_memory.sql`: port 5 file, `vector(N)` theo số đo spike, `chat_sessions` thêm `tenant_id`/`owner_user_id`, `embedding_cache` có `input_type` trong PK.
 3. Viết 16 test ở §Tests First — đỏ.
 4. `config/types.ts` — đặc tả đủ 5 type ở §Architecture **trước** khi viết implementation nào.
 5. Port `llm/` → `LlmGateway` + `LiteLlmGateway`. Cấu hình qua `forRoot`, **không** đọc `process.env` trong package.

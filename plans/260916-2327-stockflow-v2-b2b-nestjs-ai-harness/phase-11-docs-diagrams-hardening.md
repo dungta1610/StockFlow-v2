@@ -1,7 +1,7 @@
 ---
 phase: 11
 title: "Hardening, Docs & Diagrams"
-status: pending
+status: in-progress
 priority: P2
 dependencies: [9]
 ---
@@ -149,14 +149,14 @@ Chỉ báo #4 sẽ có false positive với `z.number()` dùng cho `qty`. Xử l
 
 ## Success Criteria
 
-- [ ] `scripts/verify-architecture.sh` exit 0 trên repo sạch **và** exit 1 khi có vi phạm cố ý.
-- [ ] Quickstart README chạy đúng trên môi trường xoá sạch, không bước ngoài tài liệu.
-- [ ] Toàn bộ 9 acceptance criteria xác minh lại và tick.
-- [ ] Test concurrent Phase 04 chạy 10 lần liên tiếp đều xanh.
-- [ ] `docs/system-architecture.md` đủ 5 chương, mỗi chương nêu bất biến / enforce ở đâu / đánh đổi.
-- [ ] `docs/decisions-vs-stockflow.md` liệt kê đủ mọi khác biệt cố ý so với repo Go, **gồm cả những thứ đã cắt**.
-- [ ] 25 ADR tồn tại, có index, không ADR nào mâu thuẫn với code thực tế.
-- [ ] README có mục "cố ý không làm và vì sao".
+- [x] `scripts/verify-architecture.sh` exit 0 trên repo sạch **và** exit 1 khi có vi phạm cố ý.
+- [ ] Quickstart README chạy đúng trên môi trường xoá sạch, không bước ngoài tài liệu. — **một phần:** đường "all in Docker" chạy trên bản sạch của HEAD (compose project riêng, cổng khác): mọi service healthy, migrate + seed, health, login, đặt đơn → relay → audit. Chưa kiểm: login qua UI web (image web gọi cứng cổng 3100 đang do stack dev giữ) và đường "dev mode trên host".
+- [ ] Toàn bộ 9 acceptance criteria xác minh lại và tick. — **7/9:** AC 1, 2, 3, 4 (trừ copilot session), 6, 7, 8 đạt; AC 5 và 9 chờ Phase 07/08.
+- [x] Test concurrent Phase 04 chạy 10 lần liên tiếp đều xanh.
+- [x] `docs/system-architecture.md` đủ 5 chương, mỗi chương nêu bất biến / enforce ở đâu / đánh đổi. — chương 5 ghi là "đã thiết kế, chưa làm" (07/08 hoãn).
+- [x] `docs/decisions-vs-stockflow.md` liệt kê đủ mọi khác biệt cố ý so với repo Go, **gồm cả những thứ đã cắt**.
+- [ ] 25 ADR tồn tại, có index, không ADR nào mâu thuẫn với code thực tế. — **20 ADR** (0001–0019, 0025) + index; 0020–0024 giữ chỗ cho 07/08. ADR 0013 ghi câu hỏi mở về `available` lộ cho buyer.
+- [x] README có mục "cố ý không làm và vì sao".
 
 ## Risk Assessment
 

@@ -1,4 +1,4 @@
-import { DomainError, conflict, notFound } from '../../../platform/errors/domain-error';
+import { DomainError, conflict, notFound, unauthorized } from '../../../platform/errors/domain-error';
 
 /** Identity failures. Codes are part of the public API contract. */
 export const IdentityErrors = {
@@ -6,6 +6,10 @@ export const IdentityErrors = {
   invalidCredentials: () => new DomainError('INVALID_CREDENTIALS', 'Invalid email or password.', 401),
   loginLocked: () =>
     new DomainError('LOGIN_LOCKED', 'Too many failed login attempts. Try again later.', 429),
+  /** JwtAuthGuard: no bearer scheme, or no token after it. */
+  missingToken: () => unauthorized('UNAUTHORIZED', 'Missing bearer token.'),
+  /** JwtAuthGuard: the token does not verify (bad signature, expired, revoked). */
+  invalidToken: () => unauthorized('UNAUTHORIZED', 'Invalid or expired token.'),
   orgSelectionRequired: (orgCodes: string[]) =>
     new DomainError(
       'ORG_SELECTION_REQUIRED',

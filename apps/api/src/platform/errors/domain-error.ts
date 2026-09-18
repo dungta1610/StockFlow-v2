@@ -19,8 +19,9 @@ export class DomainError extends Error {
 
 export const notFound = (what: string) => new DomainError('NOT_FOUND', `${what} not found.`, 404);
 
-export const forbidden = (message = 'You do not have access to this resource.') =>
-  new DomainError('FORBIDDEN', message, 403);
+export const forbidden = (message: string) => new DomainError('FORBIDDEN', message, 403);
+
+export const unauthorized = (code: string, message: string) => new DomainError(code, message, 401);
 
 export const conflict = (code: string, message: string) => new DomainError(code, message, 409);
 
