@@ -24,7 +24,13 @@ describe('a checked-out client losing its connection mid-transaction', () => {
     const onUncaughtException = (e: unknown) => uncaught.push(e);
     process.on('uncaughtException', onUncaughtException);
     try {
-      const txPromise = uow.withTransaction((tx) => tx.query('SELECT pg_sleep(3)'));
+      // Settle into a value at once: the rejection can land while the kill below is
+      // still being awaited, before any later handler would be attached, and Node
+      // would report it as unhandled.
+      const txOutcome = uow.withTransaction((tx) => tx.query('SELECT pg_sleep(3)')).then(
+        () => undefined,
+        (err: unknown) => err,
+      );
 
       // Find the backend running the sleep and kill it from a second connection,
       // so the loss happens while the client is checked out mid-transaction —
@@ -45,7 +51,7 @@ describe('a checked-out client losing its connection mid-transaction', () => {
 
       await withDb((pg) => pg.query('SELECT pg_terminate_backend($1)', [pid]));
 
-      await expect(txPromise).rejects.toThrow();
+      expect(await txOutcome).toBeInstanceOf(Error);
 
       // The client's 'error' event fires asynchronously and separately from the
       // query's own rejection; give it a moment to surface before checking it
