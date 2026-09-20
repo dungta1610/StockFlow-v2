@@ -43,6 +43,9 @@ describe('navItemsFor — hides screens the actor\'s role cannot reach', () => {
 
   it('a plain buyer sees only the buyer-visible screens', () => {
     expect(labels(buyer)).toEqual(['Orders', 'Products', 'Warehouses']);
+    // The copilot reads ops-scoped data and files stock proposals; a buyer has no
+    // route to it, and the API refuses them anyway.
+    expect(labels(buyer)).not.toContain('Copilot');
   });
 
   it('a buyer_admin additionally sees Users (their own organisation, scoped by the API)', () => {
@@ -55,6 +58,7 @@ describe('navItemsFor — hides screens the actor\'s role cannot reach', () => {
     expect(items).toContain('Inventory');
     expect(items).toContain('Price lists');
     expect(items).toContain('Organisations');
+    expect(items).toContain('Copilot');
     expect(items).not.toContain('Users');
   });
 
@@ -67,6 +71,7 @@ describe('navItemsFor — hides screens the actor\'s role cannot reach', () => {
       'Inventory',
       'Price lists',
       'Organisations',
+      'Copilot',
       'Users',
     ]);
   });

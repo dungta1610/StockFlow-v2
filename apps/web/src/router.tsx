@@ -9,6 +9,7 @@ import { ProductDetailPage } from './features/catalog/product-detail-page';
 import { ProductsListPage, validateProductsSearch } from './features/catalog/products-list-page';
 import { WarehouseDetailPage } from './features/catalog/warehouse-detail-page';
 import { WarehousesListPage, validateWarehousesSearch } from './features/catalog/warehouses-list-page';
+import { CopilotPage } from './features/copilot/copilot-page';
 import { InventoryDetailPage } from './features/inventory/inventory-detail-page';
 import { InventoryListPage, validateInventorySearch } from './features/inventory/inventory-list-page';
 import { NewOrderPage } from './features/orders/new-order-page';
@@ -92,6 +93,18 @@ const reservationsRoute = createRoute({
     if (session && !isOps(session)) throw redirect({ to: '/orders' });
   },
   component: ReservationsListPage,
+});
+
+const copilotRoute = createRoute({
+  getParentRoute: () => authedRoute,
+  path: '/copilot',
+  // Ops only, same as /reservations: a buyer pasting the URL lands on their own
+  // orders instead of a screen every request would 403.
+  beforeLoad: () => {
+    const session = getSession();
+    if (session && !isOps(session)) throw redirect({ to: '/orders' });
+  },
+  component: CopilotPage,
 });
 
 const inventoryRoute = createRoute({
@@ -233,6 +246,7 @@ const routeTree = rootRoute.addChildren([
     newOrderRoute,
     orderRoute,
     reservationsRoute,
+    copilotRoute,
     inventoryRoute,
     inventoryDetailRoute,
     productsRoute,

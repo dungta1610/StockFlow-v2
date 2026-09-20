@@ -15,6 +15,7 @@ type NavTo =
   | '/inventory'
   | '/price-lists'
   | '/organizations'
+  | '/copilot'
   | '/users';
 
 /** Which screens the current session may see, gated by the same roles the API enforces. */
@@ -30,6 +31,7 @@ export function navItemsFor(session: SessionView): { to: NavTo; label: string }[
       { to: '/inventory', label: 'Inventory' },
       { to: '/price-lists', label: 'Price lists' },
       { to: '/organizations', label: 'Organisations' },
+      { to: '/copilot', label: 'Copilot' },
     );
   }
   if (canManageUsers(session)) items.push({ to: '/users', label: 'Users' });
