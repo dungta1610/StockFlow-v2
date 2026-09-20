@@ -1,17 +1,16 @@
-%% PLANNED design for the ops copilot (Phases 07-08). Nothing here is built:
-%% packages/ai-harness is an empty placeholder, modules/copilot and the ai.chat_sessions
-%% table do not exist. Both phases wait for the Bedrock spike (docs/adr/0003), which has
-%% not run for lack of AWS credentials. Source: the Phase 07 and Phase 08 plan files.
-%% The spike decides HOW the runtime is built: either map Strands SDK events from
-%% agent.stream() (~0.5 day), or write an own OpenAI-compatible tool loop (~2-3 days).
-%% Either way the harness wraps each tool handler to emit tool_start / tool_end itself.
+%% The ops copilot as built (Phases 07-08). Source: packages/ai-harness and
+%% apps/api/src/modules/copilot; decisions in docs/adr/0020-0024.
+%% The runtime is our own OpenAI-compatible tool loop rather than an SDK's agent loop:
+%% it calls the handlers itself, so tool_start / tool_end are facts it observes and
+%% times, not events it hopes the SDK emits (ADR 0021). Still outstanding: the Bedrock
+%% smoke run, for lack of AWS credentials (ADR 0003).
 sequenceDiagram
     participant Ops as Ops user
     participant Web as React SPA
     participant API as CopilotController<br/>@Roles('ops','ops_admin')
-    participant Session as copilot use case<br/>(send-message)
-    participant Runtime as AgentRuntime<br/>(packages/ai-harness)
-    participant Tools as Tools built for this request<br/>(Actor + OrgScope baked in)
+    participant Session as CopilotSessionUseCases<br/>+ ChatTurnService (harness)
+    participant Runtime as OpenAiToolLoopRuntime<br/>(behind AgentRuntime)
+    participant Tools as Tools built for this request<br/>(caller resolved inside each handler)
     participant Service as Application services<br/>(OrderService, InventoryService, ...)
     participant LLM as LiteLLM alias default-chat<br/>→ Claude Haiku 4.5 on Bedrock
 
@@ -33,7 +32,7 @@ sequenceDiagram
         Service-->>Tools: result
         Tools-->>Runtime: result
         Runtime-->>Web: RunEvent tool_end { callId, name, ok, durationMs }
-        Runtime->>LLM: continue with the tool result (tool calls per turn are capped)
+        Runtime->>LLM: continue with the tool result<br/>(capped by COPILOT_MAX_TOOL_CALLS_PER_TURN)
     end
 
     Runtime-->>Web: text deltas

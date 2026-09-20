@@ -1,7 +1,7 @@
 ---
 phase: 8
 title: "Ops Copilot"
-status: pending
+status: completed
 priority: P1
 dependencies: [2, 3, 4, 7]
 ---
@@ -9,6 +9,25 @@ dependencies: [2, 3, 4, 7]
 # Phase 08: Ops Copilot
 
 > **Sửa sau red-team (finding #2, #3, #8, #11, #13).** Bốn thay đổi: tool scope qua `OrgScope` (bản đầu tự mâu thuẫn ba dòng trong cùng một trang về `orgId`); phiên chat có chủ sở hữu; approve có `@Roles` + cấm tự duyệt; `ToolFactory` giờ là hợp đồng đã đặc tả ở Phase 07.
+
+## Thực tế đã build (2026-09-20)
+
+19 kịch bản test đã phủ bằng **17 file / 59 test**, xanh hết; toàn suite `apps/api` **539 test** xanh; lint, typecheck, build, `verify-architecture.sh` sạch.
+
+| Thiết kế | Đã build | Lý do / nơi ghi |
+|---|---|---|
+| Tool factory dựng sẵn `Actor` **lúc build tool** | Resolve `Actor` **trong handler** | Registry phải đọc được tên tool mà không bịa ra một caller. Kèm lợi ích thật: role bị thu hồi giữa hội thoại có hiệu lực ngay ở lần gọi tool kế tiếp, không đợi login lại |
+| `tools: ToolFactory[]` truyền qua `forRoot` | Tool **tự đăng ký** qua `ToolRegistry.register` lúc `onModuleInit` | Tool cần application service được inject, mà `forRoot` chạy trước khi service tồn tại — đúng tiền lệ `OutboxRelay.registerHandler`. `forRoot` vẫn nhận `tools` cho tool thuần |
+| — | Thêm `AiHarnessModule.forRootAsync` | Config cần `Pool` và `ConfigService`, không tồn tại lúc khai báo module list |
+| — | `ToolFactory` mang `toolName`; bỏ `probeContext` | Registry đọc tên không cần dựng instance giả |
+| — | `StockMovementService` trả thêm `transactionId`; `AdjustStockUseCase` trả `AdjustedStock` | `applied_transaction_id` là mắt xích cuối của chuỗi truy vết. Cộng thêm field, không phá caller nào |
+| `MAX_ITERATIONS` hằng trong runtime | `chat.maxToolRounds`, nối từ `COPILOT_MAX_TOOL_CALLS_PER_TURN` | Plan đòi trần cấu hình được (test #18) |
+| ESLint quét `modules/copilot/**` | Thu hẹp còn `application/**` + `http/**` | `copilot.module.ts` bind port với implementation — đó là composition, không phải data access. Đúng câu chữ success criteria của chính plan. `verify-architecture.sh` chỉnh theo |
+| `approve`/`reject` trả 201 (mặc định Nest) | **200** | Không tạo resource nào. `POST /copilot/sessions` vẫn 201 |
+| Test #13 "DB CHECK là chốt cuối" | File riêng `self-approval-blocked-in-db.spec.ts` bypass hẳn use case | Chốt cuối chỉ có ý nghĩa nếu test vượt qua lớp trên nó |
+| — | `ChatTurnService.settled()` | Pass nền không await được thì test phải `sleep`; shutdown cũng cần |
+
+**Ghi chú:** bước 12 (hỏi tay 4 câu qua Bedrock thật) còn treo cùng smoke test Phase 07 — chờ AWS credential. Mọi test đều chạy trên gateway giả, app thật, Postgres thật.
 
 ## Overview
 

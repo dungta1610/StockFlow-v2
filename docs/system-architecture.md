@@ -13,7 +13,7 @@ The StockFlow v2 backend is a modular monolith. It has six business modules (`id
 
 `audit` is small and has no `domain/` folder. Other modules may use another module's application services and domain types (errors, `Money`, `Actor`, `OrgScope`). The only cross-module infrastructure import is `identity/infrastructure/scope-sql.ts`, and that is deliberate.
 
-The root `eslint.config.mjs` enforces three import boundaries. `platform/` never imports `modules/`. `packages/ai-harness` never imports the application. `modules/copilot/` (not built yet) never imports `pg` or any `infrastructure/`. `scripts/verify-architecture.sh` adds grep gates. See `docs/code-standards.md` for the full set.
+The root `eslint.config.mjs` enforces three import boundaries. `platform/` never imports `modules/`. `packages/ai-harness` never imports the application. `modules/copilot/`'s `application/` and `http/` never import `pg` or any `infrastructure/`. `scripts/verify-architecture.sh` adds grep gates. See `docs/code-standards.md` for the full set.
 
 ## Chapter 1: Concurrency & Transactions
 
@@ -94,28 +94,65 @@ Tenancy lives in application code, so every new query must remember to take a sc
 
 ---
 
-## Chapter 5: Agent over Domain Tools (Planned, Not Built)
+## Chapter 5: Agent over Domain Tools
 
-**Status:** not started. Phases 07–08 depend on the Phase 00 Bedrock spike, which waits for AWS credentials (ADR 0003). `packages/ai-harness` is an empty placeholder, and there is no `modules/copilot`.
+**Invariant:** an agent never has more privilege than the person who invoked it. A tool
+call is a call to an application service, with that person's `Actor` and `OrgScope`.
 
-**Design invariant:** an agent never has more privilege than the user who invoked it. A tool call is a call to an application service, with that user's `Actor` and `OrgScope`.
+The claim worth checking is not that the copilot is useful — it is that adding it opened no
+new way into the data. It did not, because it has no data access of its own.
 
-### What the spike must establish (ADR 0003)
-`scripts/spike-bedrock.mts` (`pnpm spike:bedrock`) talks to Bedrock through LiteLLM, using the aliases `default-chat` (Claude Haiku 4.5) and `default-embed` (Cohere Embed Multilingual v3). It must record three facts:
-- whether the chat model answers;
-- the embedding dimension (expected 1024; this fixes `vector(N)` in the `ai` schema);
-- whether the Strands SDK's `agent.stream()` surfaces tool-call lifecycle events. Its types declare `beforeToolCallEvent` / `afterToolCallEvent`, but the reference AI-Harness code only ever saw `textDelta`.
+### Enforced by
+- **Tools are built per request, from factories.** `ToolFactory` receives the `RunContext`;
+  the handler resolves the caller from it on every call, so a role revoked mid-conversation
+  takes effect on the next tool call. An instance built once at boot would keep the first
+  caller's scope and hand it to everybody after. Test:
+  `apps/api/test/copilot/tool-respects-rbac.spec.ts`.
+- **A tool is a zod schema plus one call to an application service.** Those services already
+  take an `OrgScope` and call `assertRole`, so the agent travels the road the HTTP
+  controllers travel. `modules/copilot/application/` and `http/` contain no SQL and import
+  no repository — enforced by `eslint.config.mjs`,
+  `scripts/verify-architecture.sh` and `apps/api/test/copilot/no-sql-in-copilot.spec.ts`.
+  No text-to-SQL, anywhere (ADR 0023).
+- **No tool schema has a tenant field for the model to fill.** Scope comes from the caller.
+  The one tool that must name a customer (`get_contract_price`) takes its *code*, resolves
+  it inside the caller's scope, and re-checks with `assertOrgInScope`. Test:
+  `copilot/tool-scope.spec.ts` asserts structurally that no other tool has such a field.
+- **Instructions hidden in data change nothing**, because the limit on a result is a `WHERE`
+  clause derived from the caller before the model is involved. Test:
+  `copilot/prompt-injection.spec.ts` puts an injection in a product name.
+- **The only write tool creates a proposal** (`propose_stock_adjustment`); stock is unchanged
+  until an `ops_admin` — never the author — approves, and approval runs the ordinary
+  `AdjustStockUseCase`. `chk_no_self_decision` holds the "second person" rule in the
+  database. Tests: `copilot/propose-does-not-write-stock.spec.ts`,
+  `approve-proposal.spec.ts`, `self-approval-blocked-in-db.spec.ts` (ADR 0024).
+- **Sessions are owned.** `ai.chat_sessions` carries `tenant_id` and `owner_user_id`, and
+  every read filters on the tenant; another tenant's session is a 404. A transcript holds
+  whatever the tools looked up, so reading one is reading that data (ADR 0022).
+- **Memory namespaces are `WHERE` clauses, not parameters** — including `supersede`, the one
+  write that spans rows the caller was not handed, on ids a model chose.
 
-If the stream does not surface tool events, the harness needs its own tool loop (about 2–3 days, already budgeted) instead of mapping SDK events (about half a day).
+### The harness
+`packages/ai-harness` is domain-agnostic: it knows nothing about orders, prices or
+warehouses, and never imports the application (ADR 0020). It ships no controller — routes
+need the application's guards — so a whole chat turn (replay → recall → agent → persist →
+consolidate) lives in `ChatTurnService` rather than in an HTTP handler.
 
-### Planned enforcement (Phase 07–08 plans)
-- **Tools are built per request from the caller's `Actor`.** Each tool calls an application service that already takes an `OrgScope` and calls `assertRole`. There is no path that runs with other privileges.
-- **Tool schemas have no tenant field for the model to fill.** Where a tool must name a customer (`get_contract_price`), the id is checked with `assertOrgInScope` before use.
-- **The only write tool creates a proposal** (`propose_stock_adjustment`). A person approves it, and approval goes through the existing `AdjustStockUseCase`.
-- **Import rule:** `modules/copilot/` may not import `pg` or `infrastructure/` (already in `eslint.config.mjs`). `scripts/verify-architecture.sh` also greps it for SQL.
-- **Sessions are owned:** chat sessions carry the tenant and owner user, and another tenant's session returns 404.
+`OpenAiToolLoopRuntime` runs the tool loop itself against the OpenAI-compatible protocol
+LiteLLM serves. It calls the handlers, so it times them, so `tool_start` / `tool_end` are
+facts it observes rather than events it hopes an SDK will emit — which is what lets the
+console show an operator which tool an answer came from (ADR 0021). It sits behind
+`AgentRuntime`; `test/harness/runtime-swappable.spec.ts` runs a whole turn on a replacement.
 
-ADRs 0020–0024 are reserved for these decisions.
+### Trade-off
+Every test here binds a fake gateway, so the suite needs no credential and no budget — but
+it also cannot tell you whether a real model, given these tool descriptions, reaches for the
+right tool. That gap is covered by the opt-in `apps/web/e2e/copilot-proposal.spec.ts` and
+by the Bedrock smoke run, both outstanding until AWS credentials exist (ADR 0003).
+
+Resolving the caller inside each tool call costs one query per call. It buys immediate
+effect for a revoked role, and a registry that can list tool names without inventing a
+caller to build one.
 
 ---
 
@@ -134,7 +171,7 @@ ADRs 0020–0024 are reserved for these decisions.
 ## Related Documentation
 
 - `docs/code-standards.md`: rules for each layer (transactions, money, tenancy, ledger, errors, tests, outbox handlers).
-- `docs/adr/index.md`: ADRs 0001–0019 and 0025.
+- `docs/adr/index.md`: ADRs 0001–0025.
 - `docs/decisions-vs-stockflow.md`: what v2 ports from StockFlow (Go) unchanged, and what it changes on purpose.
-- `docs/diagrams/`: components, order creation, outbox relay, planned copilot flow.
+- `docs/diagrams/`: components, order creation, outbox relay, copilot flow.
 - `scripts/verify-architecture.sh`: grep gates (platform never imports modules, ai-harness never imports apps, copilot never touches SQL, money is never a float, no "releasing" state).

@@ -2,7 +2,7 @@
 
 Each ADR records why one part of the system is the way it is. This index gives each ADR's title, status and date exactly as they appear in the file, plus the plan phase that wrote it.
 
-There are 20 ADRs: 0001–0019 and 0025. Numbers 0020–0024 are reserved for the AI phases (07–08), which have not started.
+There are 25 ADRs: 0001–0025, contiguous.
 
 ## Foundation (Phase 00)
 
@@ -10,7 +10,7 @@ There are 20 ADRs: 0001–0019 and 0025. Numbers 0020–0024 are reserved for th
 |---|---|---|---|
 | [0001](./0001-modular-monolith-with-ports.md) | Modular monolith with ports | accepted | 2026-09-17 |
 | [0002](./0002-single-postgres-two-schemas.md) | One Postgres, two schemas, forward-only migrations | accepted | 2026-09-17 |
-| [0003](./0003-bedrock-region-models-and-tool-events.md) | Bedrock region, models, and tool-event observability | accepted, **verification pending** (no AWS credentials yet) | 2026-09-17 |
+| [0003](./0003-bedrock-region-models-and-tool-events.md) | Bedrock region, models, and tool-event observability | accepted; chat/embedding checks **pending** (no AWS credentials), tool events resolved by ADR 0021 | 2026-09-17, rev. 2026-09-20 |
 | [0004](./0004-explicit-transaction-boundaries-and-isolation.md) | Explicit transaction boundaries and isolation | accepted | 2026-09-17 |
 | [0005](./0005-monorepo-package-consumption-and-tooling.md) | Monorepo package consumption and tooling versions | accepted (amends the planned "source consumption only" approach) | 2026-09-17 |
 | [0006](./0006-test-isolation-strategy.md) | Test isolation strategy | accepted | 2026-09-17 |
@@ -49,17 +49,20 @@ There are 20 ADRs: 0001–0019 and 0025. Numbers 0020–0024 are reserved for th
 |---|---|---|---|
 | [0025](./0025-spa-over-ssr.md) | The ops console is a plain SPA, not server-rendered | accepted | 2026-09-19 |
 
-## Reserved: AI Harness & Copilot (Phases 07–08, not started)
+## AI Harness (Phase 07)
 
-These numbers and titles come from the Phase 07–08 plans. No files exist yet. Both phases depend on the Bedrock spike in ADR 0003.
+| # | Title | Status | Date |
+|---|---|---|---|
+| [0020](./0020-ai-harness-as-package.md) | The AI harness is a package, and it ships no controller | accepted | 2026-09-20 |
+| [0021](./0021-agent-runtime-behind-interface.md) | The agent loop is ours, behind an interface | accepted | 2026-09-20 |
+| [0022](./0022-memory-namespace-and-session-ownership.md) | Memory namespaces and session ownership are enforced by WHERE clauses | accepted | 2026-09-20 |
 
-| # | Planned file | Phase |
-|---|---|---|
-| 0020 | `0020-ai-harness-as-package.md` | 07 |
-| 0021 | `0021-agent-runtime-behind-interface.md` | 07 |
-| 0022 | `0022-memory-namespace-and-session-ownership.md` | 07 |
-| 0023 | `0023-agent-tools-call-services-not-repositories.md` | 08 |
-| 0024 | `0024-human-in-the-loop-for-agent-writes.md` | 08 |
+## Ops Copilot (Phase 08)
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [0023](./0023-agent-tools-call-services-not-repositories.md) | Agent tools call application services, never repositories | accepted | 2026-09-20 |
+| [0024](./0024-human-in-the-loop-for-agent-writes.md) | The agent proposes; a person decides | accepted | 2026-09-20 |
 
 ---
 
@@ -85,7 +88,7 @@ On 2026-09-17, four adversarial reviewers checked the plan. They raised 39 raw f
 1. **No intermediate "releasing" state** (finding #1). Expiry used to move reservations to `releasing` inside one sweep-wide transaction, which could strand stock. Now `inventory_reservations.status` is only `held | released | consumed`, and a status change settles the whole order under its row lock (ADR 0013, 0018). This is enforced by the "no releasing" gate in `scripts/verify-architecture.sh`. Tests: `scheduler/expiry-*.spec.ts`, `ordering/no-deadlock-mixed-flows.spec.ts`.
 2. **Ops had no read path to buyer data** (finding #2). Scoping by `actor.orgId` left ops staff, who belong to the internal organisation, seeing nothing. Fixed by `OrgScope` (`single` / `all-buyers` / `all`) (ADR 0007). Test: `identity/org-scope.spec.ts`.
 3. **Nested transactions and unstated isolation** (findings #5, #6). Use cases take `tx: Tx` and never open one. READ COMMITTED, `lock_timeout` and `statement_timeout` are set per connection (ADR 0004). Tests: `platform/transaction-settings.spec.ts`, `scheduler/no-nested-transaction.spec.ts`.
-4. **Tool lifecycle events were assumed, not verified** (finding #4). The reference harness only yielded `textDelta`. This became the ADR 0003 spike question.
+4. **Tool lifecycle events were assumed, not verified** (finding #4). The reference harness only yielded `textDelta`. This became the ADR 0003 spike question, and was settled in ADR 0021 by removing the dependency: the harness runs its own tool loop and emits the events around handlers it calls itself. Test: `harness/tool-events.spec.ts`.
 5. **Outbox had two sources of truth; the audit log crossed tenants** (finding #14). `status` is the only "handled" predicate, and `audit_log` has a NOT NULL `org_id` with a whitelisted summary (ADR 0017, 0019). Tests: `outbox/single-source-of-truth.spec.ts`, `audit/scope.spec.ts`, `audit/redaction.spec.ts`.
 6. **The idempotency claim sat inside the order transaction** (finding #16). A rollback erased the key. Now the claim commits first, and a failure frees the key (ADR 0015). Tests: `ordering/idempotency-*.spec.ts`.
 

@@ -1,7 +1,7 @@
 ---
 phase: 11
 title: "Hardening, Docs & Diagrams"
-status: in-progress
+status: completed (quickstart trên máy sạch còn một nhánh chưa kiểm)
 priority: P2
 dependencies: [9]
 ---
@@ -151,11 +151,14 @@ Chỉ báo #4 sẽ có false positive với `z.number()` dùng cho `qty`. Xử l
 
 - [x] `scripts/verify-architecture.sh` exit 0 trên repo sạch **và** exit 1 khi có vi phạm cố ý.
 - [ ] Quickstart README chạy đúng trên môi trường xoá sạch, không bước ngoài tài liệu. — **một phần:** đường "all in Docker" chạy trên bản sạch của HEAD (compose project riêng, cổng khác): mọi service healthy, migrate + seed, health, login, đặt đơn → relay → audit. Chưa kiểm: login qua UI web (image web gọi cứng cổng 3100 đang do stack dev giữ) và đường "dev mode trên host".
-- [ ] Toàn bộ 9 acceptance criteria xác minh lại và tick. — **7/9:** AC 1, 2, 3, 4 (trừ copilot session), 6, 7, 8 đạt; AC 5 và 9 chờ Phase 07/08.
+- [x] Toàn bộ 9 acceptance criteria xác minh lại và tick — **9/9, với một ghi chú trên AC#9.**
+  - AC#4 nay đủ cả phần copilot session/memory: `copilot/session-ownership.spec.ts`, `copilot/memory-tenant-isolation.spec.ts`.
+  - AC#5 đạt: guard nằm trong service (`copilot/tool-respects-rbac.spec.ts`), `application/`+`http/` không có SQL (`copilot/no-sql-in-copilot.spec.ts` + ESLint + `verify-architecture.sh`), tool ghi chỉ tạo đề xuất (`propose-does-not-write-stock.spec.ts`), approve có `@Roles('ops_admin')` **và** `assertRole`, cấm tự duyệt ở use case **và** ở DB (`self-approval-blocked-in-db.spec.ts`).
+  - AC#9 đạt **phần quan sát được**: `stream()` phát `tool_start`/`tool_end` từ một tool call thật, có `callId` khớp và `durationMs` > 0 (`harness/tool-events.spec.ts`, `copilot/sse-emits-tool-events.spec.ts`). Chữ "qua Bedrock" trong AC vẫn treo — không có credential. Ghi chú trung thực: runtime tự phát event quanh handler nó tự gọi, nên provider nào không đổi kết quả; nhưng đó là suy luận, không phải phép đo.
 - [x] Test concurrent Phase 04 chạy 10 lần liên tiếp đều xanh.
-- [x] `docs/system-architecture.md` đủ 5 chương, mỗi chương nêu bất biến / enforce ở đâu / đánh đổi. — chương 5 ghi là "đã thiết kế, chưa làm" (07/08 hoãn).
+- [x] `docs/system-architecture.md` đủ 5 chương, mỗi chương nêu bất biến / enforce ở đâu / đánh đổi — chương 5 viết lại theo thứ đã build, dẫn tới file test cụ thể cho từng chốt.
 - [x] `docs/decisions-vs-stockflow.md` liệt kê đủ mọi khác biệt cố ý so với repo Go, **gồm cả những thứ đã cắt**.
-- [ ] 25 ADR tồn tại, có index, không ADR nào mâu thuẫn với code thực tế. — **20 ADR** (0001–0019, 0025) + index; 0020–0024 giữ chỗ cho 07/08. ADR 0013 ghi câu hỏi mở về `available` lộ cho buyer.
+- [x] 25 ADR tồn tại, có index, không ADR nào mâu thuẫn với code thực tế — 0001–0025 liền mạch. ADR 0003 sửa lại: câu hỏi tool-event **khử phụ thuộc** thay vì trả lời (ADR 0021), hai câu còn lại vẫn treo. ADR 0013 giữ câu hỏi mở về `available` lộ cho buyer.
 - [x] README có mục "cố ý không làm và vì sao".
 
 ## Risk Assessment

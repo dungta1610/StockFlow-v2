@@ -1,7 +1,7 @@
 ---
 phase: 7
 title: "packages/ai-harness Extraction"
-status: pending
+status: completed (smoke test outstanding — no AWS credentials)
 priority: P1
 dependencies: [0]
 ---
@@ -9,6 +9,25 @@ dependencies: [0]
 # Phase 07: packages/ai-harness Extraction
 
 > **Viết lại sau red-team (finding #3, #4, #9, #10, #11).** Bản đầu của phase này viết từ README và `system-architecture.md` của AI-Harness chứ không từ TypeScript — nên gần như mọi giả định tích hợp đều sai. Bản này dựa trên chữ ký thật đã đọc. 3→**6 ngày**, và con số đó đã gồm phương án dự phòng nếu Strands không phát tool event.
+
+## Thực tế đã build (2026-09-20)
+
+Xong 15/16 tiêu chí. 16 file test (57 test) xanh trên pgvector thật; toàn suite `apps/api` 480 test xanh; lint, typecheck, build sạch.
+
+| Thiết kế | Đã build | Lý do / nơi ghi |
+|---|---|---|
+| Bước 1 đọc kết luận spike P00 về tool event | Spike **không chạy được** (máy không có AWS credential). Chọn thẳng nhánh `OpenAiToolLoopRuntime` | ADR 0021: yêu cầu là *bảo đảm*, mà bảo đảm dựa trên hành vi SDK chưa verify thì không phải bảo đảm. Strands thêm sau = một binding DI |
+| `strands-agent.runtime.ts` | Không tạo | Cùng lý do trên. `AgentRuntime` là interface; test #15 chứng minh thay được |
+| `tools/tool-definition.ts` | `ToolDefinition`/`ToolFactory` nằm trong `config/types.ts` | DRY — chúng là một phần của bộ 5 type đặc tả ở bước 4, tách file riêng chỉ để khớp cây thư mục là trùng lặp |
+| RRF hợp nhất trong SQL | Hai nhánh xếp hạng trong SQL, **hợp nhất trong TS** (`memory/rrf.ts`) | Test #3 đòi hàm thuần. Pool mỗi nhánh đã chặn (~20–40 dòng) nên fuse ở TS không tốn gì, và công thức chỉ nằm ở một chỗ. HNSW vẫn nguyên vì bộ lọc namespace vẫn lặp theo nhánh |
+| `EmbeddingService` cache LRU trong process | Cache bằng **bảng** `ai.embedding_cache` | Khoá `(content_hash, model, input_type)` theo plan; bảng thì restart không mua lại vector đã trả tiền |
+| `ChatTurnService.stream(input: RunInput)` | `stream(input: ChatTurnInput)` = `Omit<RunInput, 'tools' \| 'history' \| 'systemPromptExtra'>` | Ba field bỏ ra chính là thứ service này sinh ra. Nhận `RunInput` đầy đủ rồi ghi đè là chữ ký nói dối |
+| — | Thêm `ChatTurnService.settled()` | Pass nền không await được thì test phải `sleep` — flaky theo thiết kế. Shutdown cũng cần nó để không giết pass giữa chừng |
+| `db/migrations/009_ai_memory.sql` | Đúng như plan | `vector(1024)`, `chat_sessions` có `tenant_id`/`owner_user_id`, `embedding_cache` có `input_type` trong PK |
+| — | Root `pnpm.overrides."@types/pg": "8.23.1"` | Hai workspace package resolve cùng range `^8.15.0` ra hai version khác nhau ⇒ kiểu `Pool` không tương thích qua biên package |
+| `.env.example` có `MEMORY_SCORE_FLOOR` | Thay bằng `EMBED_DIMENSIONS`; floor 0.28 nằm cạnh strategy trong `agent.registry.ts` | Không code nào đọc `MEMORY_SCORE_FLOOR` — một env var được tài liệu hoá mà không ai đọc còn tệ hơn không tài liệu. Floor hiệu chuẩn theo model nên phải nằm cạnh thứ dùng nó, và ADR 0003 giữ cặp (model, floor) |
+
+**Còn treo:** bước 14 (smoke test agent `math` qua Bedrock thật) và hai tiêu chí spike (a)(b) của ADR 0003 — đều chờ AWS credential. Mọi test khác chạy trên gateway giả nên không phụ thuộc.
 
 ## Overview
 

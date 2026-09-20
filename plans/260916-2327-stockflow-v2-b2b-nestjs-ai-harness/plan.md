@@ -1,6 +1,6 @@
 ---
 title: "StockFlow v2 — B2B e-commerce (NestJS + AI Harness)"
-status: in-progress
+status: in-progress (còn các phép chạy cần AWS credential)
 created: 2026-09-16
 revised: 2026-09-17
 mode: tdd
@@ -48,11 +48,11 @@ Học sâu kiến trúc + AI. Thước đo là *mỗi thứ build ra dạy đư�
 | 04 | [Ordering, Atomic Reservation & Lifecycle](phase-04-ordering-atomic-reservation.md) | **completed** | P1 | 02, 03 | 5 ngày |
 | 05 | [Outbox Relay, Scheduler & Audit](phase-05-outbox-relay-scheduler.md) | **completed** | P1 | 04 | 3 ngày |
 | 06 | ~~Payment (Simulated)~~ | **cancelled** | — | — | — |
-| 07 | [packages/ai-harness Extraction](phase-07-ai-harness-package.md) | pending | P1 | 00 | 6 ngày |
-| 08 | [Ops Copilot](phase-08-ops-copilot.md) | pending | P1 | 02, 03, 04, 07 | 4 ngày |
-| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | in-progress (xong trừ Copilot — chờ 07/08) | P1 | 05, 08 | 5 ngày |
+| 07 | [packages/ai-harness Extraction](phase-07-ai-harness-package.md) | **completed** (smoke test chờ AWS credential) | P1 | 00 | 6 ngày |
+| 08 | [Ops Copilot](phase-08-ops-copilot.md) | **completed** | P1 | 02, 03, 04, 07 | 4 ngày |
+| 09 | [Web Foundation & Ops Console](phase-09-web-ops-console.md) | **completed** (e2e copilot gate sau `E2E_COPILOT=1`) | P1 | 05, 08 | 5 ngày |
 | 10 | ~~Buyer Portal~~ | **cancelled** | — | — | — |
-| 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | in-progress (xong phần không-AI) | P2 | 09 | 3 ngày |
+| 11 | [Hardening, Docs & Diagrams](phase-11-docs-diagrams-hardening.md) | **completed** (quickstart còn một nhánh chưa kiểm) | P2 | 09 | 3 ngày |
 
 **Tổng ≈ 39 ngày làm việc ≈ 8 tuần.**
 

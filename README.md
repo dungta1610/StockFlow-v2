@@ -1,8 +1,10 @@
 # StockFlow v2
 
-A learning project: a B2B e-commerce backend on NestJS that exercises concurrency invariants, eventual consistency and (planned) an agent that works through domain tools. The frontend is a React SPA used by ops staff and by buyer organisations to manage orders, inventory and pricing.
+A learning project: a B2B e-commerce backend on NestJS that exercises concurrency invariants, eventual consistency and an agent that works through domain tools. The frontend is a React SPA used by ops staff and by buyer organisations to manage orders, inventory and pricing.
 
-**Status:** Phases 01–05 are complete (identity, catalog and pricing, inventory, ordering, outbox and audit). Phase 09 (web console) is in progress. Phase 00 is done except the Bedrock spike, which waits for AWS credentials; the AI phases 07–08 depend on it and have not started. Phases 06 (payment) and 10 (buyer portal) were cancelled.
+**Status:** Phases 00–05 and 07–09 are complete: identity, catalog and pricing, inventory, ordering, outbox and audit, the AI harness, the ops copilot, and the web console. Phases 06 (payment) and 10 (buyer portal) were cancelled.
+
+What is still outstanding, and why: the Bedrock spike and the end-to-end runs that need a live model (`pnpm spike:bedrock`, the `math` smoke test, `E2E_COPILOT=1 pnpm --filter @stockflow/web test:e2e`) have never run, because this environment has no AWS credentials. Everything else is tested against a fake gateway, the real application and a real Postgres — see ADR 0003 for what those runs would still establish.
 
 ## Architecture at a Glance
 
@@ -14,7 +16,7 @@ Five invariants, one lesson each:
 | Prices come from the server only | Port + pure policy function, never client input | `apps/api/src/modules/pricing/` |
 | One outbox, many consumers | Transactional outbox, claim by row lock, savepoint per event | `apps/api/src/platform/outbox/` |
 | Multi-tenant without leaks | `OrgScope` in signatures, not "if admin skip filter" | `apps/api/src/modules/identity/domain/org-scope.ts` |
-| Agent ≤ user privilege | Tools built per actor; tools call application services | not built (Phases 07–08) |
+| Agent ≤ user privilege | Tools built per request; a tool is a schema plus one application-service call | `apps/api/src/modules/copilot/application/tools/` |
 
 See `docs/system-architecture.md` for the full picture.
 
@@ -196,7 +198,7 @@ apps/web/
 
 packages/
 ├── contracts/             # Zod request/response schemas shared by the API and the web app
-└── ai-harness/            # Empty placeholder for Phase 07
+└── ai-harness/            # Domain-agnostic agent runtime: tool loop, memory, sessions
 
 db/migrations/
 ├── 001_schemas.sql        # `commerce` and `ai` schemas; vector and citext extensions
@@ -206,14 +208,16 @@ db/migrations/
 ├── 005_inventory.sql      # inventory, inventory_transactions (ledger)
 ├── 006_ordering.sql       # orders, order_items, inventory_reservations, outbox_events, idempotency_keys
 ├── 007_outbox_audit.sql   # audit_log
-└── 008_list_query_indexes.sql  # sort indexes for the audit and ledger lists
+├── 008_list_query_indexes.sql  # sort indexes for the audit and ledger lists
+├── 009_ai_memory.sql      # ai schema: memories, chat_sessions, session_summaries, embedding_cache
+└── 010_copilot.sql        # stock_adjustment_proposals
 
 docs/
-├── system-architecture.md     # Five chapters: concurrency, pricing, outbox, multi-tenancy, agent (planned)
+├── system-architecture.md     # Five chapters: concurrency, pricing, outbox, multi-tenancy, agent
 ├── code-standards.md          # Rules per layer
 ├── decisions-vs-stockflow.md  # What changed from the Go repo, and why
-├── adr/                       # 20 ADRs: 0001–0019 and 0025; 0020–0024 reserved for Phases 07–08
-└── diagrams/                  # Mermaid: components, order creation, outbox relay, copilot (planned)
+├── adr/                       # 25 ADRs: 0001–0025
+└── diagrams/                  # Mermaid: components, order creation, outbox relay, copilot
 
 scripts/
 ├── migrate.ts             # pnpm migrate: loads .env, runs apps/api/src/cli/migrate
@@ -245,9 +249,13 @@ docker-compose.yml         # postgres, redis, litellm, migrate (one-shot), api, 
 
 **Not in v1** (ADR 0008). Tenancy is enforced in the repositories through `OrgScope`. Why: with a shared pool, a forgotten or leaked `SET LOCAL` is itself a cross-tenant bug. The ops "every buyer" scope would make the policies conditional. And every read path already takes a required scope and has isolation tests. Revisit if other services or tools start querying the database directly.
 
-### AI harness and ops copilot (Phases 07–08)
+### A live model
 
-**Not started.** They depend on the Phase 00 Bedrock spike (`pnpm spike:bedrock`, ADR 0003). The spike has not run because no AWS credentials are configured. It must record three facts: whether the chat model answers, the embedding dimension (this fixes `vector(N)`), and whether the Strands SDK's `agent.stream()` surfaces tool-call lifecycle events. If it does not, the harness needs its own tool loop (about 2–3 days, already budgeted) instead of mapping SDK events (about half a day). The design lives in the Phase 07–08 plans. ADRs 0020–0024 are reserved for it.
+**Built, never run against Bedrock.** `packages/ai-harness` and the ops copilot are complete and tested, but every test binds a fake LLM gateway — so nothing here has yet talked to a real model. Three things therefore remain unverified: whether the chat alias answers, the embedding dimension the gateway actually returns (it must match `vector(1024)`), and whether a real model, given these tool descriptions, reaches for the right tool.
+
+They need AWS credentials, which this environment has none of. Once there are some: `pnpm spike:bedrock`, then `E2E_COPILOT=1 pnpm --filter @stockflow/web test:e2e copilot-proposal`. See ADR 0003.
+
+The tool-lifecycle question the spike was also meant to answer is moot: the harness runs its own tool loop and emits `tool_start` / `tool_end` around handlers it calls itself, so the guarantee does not depend on any SDK's behaviour (ADR 0021).
 
 ---
 
@@ -268,7 +276,7 @@ See `docs/adr/` for the full rationale. Quick reference:
 
 ## Database
 
-Postgres 16 with the pgvector extension. pgvector is reserved for the planned AI phases; nothing uses it yet.
+Postgres 16 with the pgvector extension. pgvector backs `ai.memories` and `ai.embedding_cache` — the agent's long-term memory (ADR 0022).
 
 **Manual query on the local stack:**
 ```bash

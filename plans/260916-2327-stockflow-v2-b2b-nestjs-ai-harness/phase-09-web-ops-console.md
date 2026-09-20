@@ -13,7 +13,7 @@ dependencies: [5, 8]
 > 2. Inventory (list, adjust, timeline sổ cái).
 > 3. Catalog + bảng giá — **ngoài danh sách 4 màn**, thêm vì cần test Phase 02.
 > 4. Orgs + users — **ngoài danh sách 4 màn**, thêm vì cần test Phase 01.
-> Reservations, Copilot, audit timeline, e2e làm khi 05/08 xong.
+> Reservations, Copilot, audit timeline, e2e làm khi 05/08 xong. **Copilot hoàn tất 2026-09-21** (Phase 08 xong): `lib/sse.ts`, `features/copilot/{copilot-api,use-chat-stream,tool-call-badge,proposal-card,copilot-page}`, route `/copilot` ops-only, nav item.
 
 > **Sửa sau red-team (MVP cut + SSE auth).** 7 màn → **4 màn**. Bỏ Dashboard (và endpoint `/ops/dashboard` bịa ra để phục vụ nó — một endpoint backend tính trong ngân sách frontend), bỏ Price-lists CRUD, bỏ Orgs & users CRUD. Giữ nguyên refresh mutex vì đó là bài học liên phase thật. 6→5 ngày.
 
@@ -152,18 +152,22 @@ UI không TDD từng màn. Viết trước đúng chỗ có logic thật:
 
 ## Success Criteria
 
-- [ ] 5 test + 2 e2e xanh. — **một phần:** test #1, #2, #4, #5 + e2e ops-order-lifecycle + two-tab-refresh xanh; test #3 (SSE) và e2e copilot chờ Phase 07/08.
+- [ ] 5 test + 2 e2e xanh.
+ — **một phần:** test #1, #2, #4, #5 + e2e ops-order-lifecycle + two-tab-refresh xanh; test #3 (SSE) và e2e copilot chờ Phase 07/08.
 - [x] 5 request song song gặp 401 ⇒ refresh gọi đúng 1 lần, không ai bị đăng xuất oan.
 - [x] Hai tab cùng hết hạn access token ⇒ refresh gọi đúng 1 lần **trên toàn origin**, cả hai tab tiếp tục làm việc (e2e mở 2 tab).
-- [ ] **Không request nào mang token trong URL** (assert trong test #3 và rà thủ công tab Network). — api-client chỉ gửi token qua header `Authorization`; assert trong test #3 chờ SSE (Phase 07/08).
+- [ ] **Không request nào mang token trong URL** (assert trong test #3 và rà thủ công tab Network).
+ — api-client chỉ gửi token qua header `Authorization`; assert trong test #3 chờ SSE (Phase 07/08).
 - [x] Cả 4 màn có đủ empty / error / loading state.
-- [ ] Copilot hiện badge tool theo thời gian thực; duyệt đề xuất ngay trong chat và thấy tồn kho đổi. — **hoãn** cùng Phase 07/08.
+- [ ] Copilot hiện badge tool theo thời gian thực; duyệt đề xuất ngay trong chat và thấy tồn kho đổi.
+ — **hoãn** cùng Phase 07/08.
 - [x] Order detail vẽ đúng state machine **5 trạng thái** + timeline sự kiện.
 - [x] Inventory detail hiện timeline sổ cái với before/after từng dòng.
 - [x] Dark/light hoạt động ở mọi màn.
 - [x] Không horizontal scroll ở 375 / 768 / 1440px.
 - [x] Không type API nào khai lại ở FE.
-- [ ] `docker compose up` ⇒ web mở được, đăng nhập bằng user seed. — chưa xác minh lại: image `api`/`web` trong compose cũ, cần `docker compose up -d --build`.
+- [ ] `docker compose up` ⇒ web mở được, đăng nhập bằng user seed.
+ — chưa xác minh lại: image `api`/`web` trong compose cũ, cần `docker compose up -d --build`.
 
 ## Risk Assessment
 
