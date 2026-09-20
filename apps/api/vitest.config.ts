@@ -13,7 +13,10 @@ export default defineConfig({
   ],
   resolve: {
     // Tests consume the contracts package from source; the built dist is for runtime.
-    alias: { '@stockflow/contracts': resolve(__dirname, '../../packages/contracts/src/index.ts') },
+    alias: {
+      '@stockflow/contracts': resolve(__dirname, '../../packages/contracts/src/index.ts'),
+      '@stockflow/ai-harness': resolve(__dirname, '../../packages/ai-harness/src/index.ts'),
+    },
   },
   test: {
     globals: true,

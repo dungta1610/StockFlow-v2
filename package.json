@@ -2,7 +2,9 @@
   "name": "stockflow-v2",
   "private": true,
   "packageManager": "pnpm@9.15.9",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev:api": "pnpm --filter @stockflow/api start:dev",
     "dev:web": "pnpm --filter @stockflow/web dev",
@@ -28,7 +30,17 @@
     "zod": "^4.1.0"
   },
   "pnpm": {
-    "overrides": { "zod": "^4.1.0" },
-    "onlyBuiltDependencies": ["@swc/core", "esbuild", "@nestjs/core", "ssh2", "cpu-features", "protobufjs"]
+    "overrides": {
+      "zod": "^4.1.0",
+      "@types/pg": "8.23.1"
+    },
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "@nestjs/core",
+      "ssh2",
+      "cpu-features",
+      "protobufjs"
+    ]
   }
 }

@@ -3,9 +3,13 @@
   "compilerOptions": {
     "module": "commonjs",
     "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
     "outDir": "dist",
     "rootDir": "src",
-    "declaration": true
+    "declaration": true,
+    "lib": ["ES2023", "DOM"],
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"]
 }

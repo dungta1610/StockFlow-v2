@@ -4,10 +4,22 @@
   "private": true,
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "peerDependencies": { "zod": "^4.1.0" },
-  "devDependencies": { "typescript": "~5.9.3" }
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "pg": "^8.16.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "~11.2.5",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.0",
+    "pg": "^8.16.0",
+    "typescript": "~5.9.3",
+    "zod": "^4.1.0"
+  }
 }
