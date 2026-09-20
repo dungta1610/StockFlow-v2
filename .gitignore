@@ -9,3 +9,4 @@ coverage/
 .vite/
 apps/web/test-results/
 apps/web/playwright-report/
+.claude/
