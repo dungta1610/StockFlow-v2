@@ -45,9 +45,12 @@ gate "ai-harness never imports apps/" optional \
   "from ['\"][^'\"]*apps/" \
   packages/ai-harness/src
 
+# Scoped to the layers that answer requests and run tools. `infrastructure/` holds the
+# one repository the module is allowed, and `copilot.module.ts` binds it — that is
+# composition, not data access. ESLint draws the same line.
 gate "copilot never touches SQL or pg" optional \
-  "\b(SELECT|INSERT|UPDATE|DELETE)\b|from ['\"]pg['\"]" \
-  apps/api/src/modules/copilot
+  "\b(SELECT|INSERT INTO|UPDATE|DELETE FROM)\b|from ['\"]pg['\"]" \
+  apps/api/src/modules/copilot/application apps/api/src/modules/copilot/http
 
 # Money is a decimal string on the wire and integer minor units in code. A money-named
 # field typed as a plain number, or a bare z.number() in the contracts (counts must

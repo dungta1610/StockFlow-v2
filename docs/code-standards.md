@@ -76,6 +76,35 @@ StockFlow (Go) used:
 - Never trust an organisation id that arrives in a request body or in model output.
 - Cross-tenant reads return **404**, not 403 (403 confirms the resource exists).
 
+## 5a. Agent memory and sessions (docs/adr/0022)
+
+- **Every statement in a `MemoryStore` implementation carries `namespace = ANY(...)`** when
+  it reads or rewrites existing rows; an `INSERT` supplies the namespace instead. The clause
+  is what enforces the boundary — a method parameter only describes an intention. This
+  applies to `supersede` above all: it is the one write that spans rows the caller was not
+  handed, on ids chosen by a model.
+- Every read of a chat session or its messages filters on `tenant_id`, including reads that
+  run inside an already-authorised turn. A role guard says what a caller may do, not whose
+  data they may see.
+- An agent's memory `scope` is a function of the run context, never a constant string.
+- Adding a namespace to the retrieval path means adding it to `adjudicateAgainst` in
+  consolidation, or memories in that namespace can never be corrected.
+
+## 5b. Agent tools (docs/adr/0023, 0024)
+
+- A tool is a zod schema plus **one call to an application service**. Logic belongs in the
+  service, where the HTTP layer gets it too.
+- `modules/copilot/application/` and `modules/copilot/http/` contain no SQL and import no
+  repository. Exactly one file may query: the repository behind the proposals port.
+- **No text-to-SQL**, under any circumstances.
+- No tool schema declares a tenant or organisation field — scope comes from the caller. A
+  tool that must name a customer takes its **code**, resolves it inside the caller's scope,
+  and re-checks with `assertOrgInScope`.
+- Tools are built per request from a `ToolFactory`; the caller is resolved inside the
+  handler, so a revoked role takes effect on the next call.
+- An agent write creates a proposal for a person to approve. Approving calls the ordinary
+  use case — an agent-originated change uses the same code path as a human one.
+
 ## 6. Ledger
 
 - `inventory_transactions` is append-only: repositories expose no update or delete.

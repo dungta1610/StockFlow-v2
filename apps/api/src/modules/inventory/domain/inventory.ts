@@ -38,6 +38,15 @@ export interface StockMove {
   after: StockLevel;
 }
 
+/**
+ * A move together with the ledger row that recorded it. The id matters to callers
+ * that have to point back at the exact entry a change produced — an approved stock
+ * proposal stores it, which is what completes the trail from conversation to ledger.
+ */
+export interface RecordedMove extends StockMove {
+  transactionId: string;
+}
+
 export interface InventoryFilter {
   productId?: string;
   warehouseId?: string;

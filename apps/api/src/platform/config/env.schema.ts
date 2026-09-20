@@ -55,6 +55,35 @@ export const envSchema = z.object({
   /** How long a resolved idempotency key is kept before the cleanup job deletes it. */
   IDEMPOTENCY_TTL_HOURS: z.coerce.number().int().positive().default(24),
 
+  /** LiteLLM gateway: the one endpoint the AI harness talks to (docs/adr/0003). */
+  LITELLM_BASE_URL: z.string().url().default('http://localhost:4001'),
+  LITELLM_API_KEY: z.string().min(1).default('sk-stockflow-dev-change-me'),
+  LITELLM_CHAT_MODEL: z.string().min(1).default('default-chat'),
+  LITELLM_EMBED_MODEL: z.string().min(1).default('default-embed'),
+  /**
+   * Must equal the `vector(N)` of db/migrations/009_ai_memory.sql. Changing the
+   * embedding model means changing both AND re-embedding every stored row.
+   */
+  EMBED_DIMENSIONS: z.coerce.number().int().positive().default(1024),
+
+  /** Turns replayed to the agent verbatim; older ones arrive as a running summary. */
+  REPLAY_WINDOW: z.coerce.number().int().positive().default(8),
+  /**
+   * Messages that must arrive before another consolidation pass. One turn is two
+   * messages, so 2 forms memory after every turn. Above 2 a short conversation
+   * never reaches the threshold and never forms any memory at all — the harness
+   * refuses to boot rather than allow it.
+   */
+  CONSOLIDATE_AFTER_MESSAGES: z.coerce.number().int().positive().max(2).default(2),
+
+  /**
+   * Copilot turns allowed per minute per user. Per user, not per IP: what is being
+   * bounded is model spend, and an office shares one address.
+   */
+  COPILOT_RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(20),
+  /** Model round trips one copilot turn may take; each tool result costs one. */
+  COPILOT_MAX_TOOL_CALLS_PER_TURN: z.coerce.number().int().positive().max(20).default(6),
+
   /**
    * Comma-separated browser origins allowed by CORS. Also the allow-list for the
    * cookie-authenticated /auth/refresh and /auth/logout endpoints.

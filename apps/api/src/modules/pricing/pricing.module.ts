@@ -30,6 +30,6 @@ import { SqlPriceResolver } from './infrastructure/sql-price-resolver';
     QuotePricesUseCase,
   ],
   // Carts and orders price through the same resolver as quotes.
-  exports: [PriceResolver],
+  exports: [PriceResolver, QuotePricesUseCase],
 })
 export class PricingModule {}

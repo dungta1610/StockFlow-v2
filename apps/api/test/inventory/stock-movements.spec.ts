@@ -62,9 +62,12 @@ describe('stock movements', () => {
         warehouseId: warehouse,
         before: { available: 10, reserved: 0 },
         after: { available: 6, reserved: 4 },
+        // The ledger row this move wrote, so a caller can point at the exact entry.
+        transactionId: expect.any(String),
       });
 
       const { inventory, ledger } = await state();
+      expect(move!.transactionId).toBe(ledger[0].id);
       expect([inventory[0].available_qty, inventory[0].reserved_qty]).toEqual([6, 4]);
       // Nothing is created or destroyed: the total is unchanged.
       expect(inventory[0].available_qty + inventory[0].reserved_qty).toBe(10);

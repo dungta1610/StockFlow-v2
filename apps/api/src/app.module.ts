@@ -1,5 +1,12 @@
 import { type MiddlewareConsumer, Module, type NestModule } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { AiHarnessModule } from '@stockflow/ai-harness';
+import type { Pool } from 'pg';
+import { COPILOT_STRATEGIES, OPS_COPILOT_AGENT } from './modules/copilot/application/agent.registry';
+import { CopilotModule } from './modules/copilot/copilot.module';
+import { PG_POOL } from './platform/database/database.tokens';
+import type { Env } from './platform/config/env.schema';
 import { AuditModule } from './modules/audit/audit.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
 import { IdentityModule } from './modules/identity/identity.module';
@@ -33,6 +40,32 @@ import { SchedulerModule } from './platform/scheduler/scheduler.module';
     InventoryModule,
     AuditModule,
     OrderingModule,
+    // The harness is configured here, at the composition root, because this is the
+    // only place that knows both the infrastructure (pool, gateway) and the domain
+    // (which agents exist). The package itself reads no environment variable.
+    AiHarnessModule.forRootAsync({
+      inject: [ConfigService, PG_POOL],
+      useFactory: (config: ConfigService<Env, true>, pool: Pool) => ({
+        db: { pool, schema: 'ai' },
+        llm: {
+          baseUrl: config.get('LITELLM_BASE_URL', { infer: true }),
+          apiKey: config.get('LITELLM_API_KEY', { infer: true }),
+          chatModel: config.get('LITELLM_CHAT_MODEL', { infer: true }),
+          embedModel: config.get('LITELLM_EMBED_MODEL', { infer: true }),
+          embedDimensions: config.get('EMBED_DIMENSIONS', { infer: true }),
+        },
+        agents: [OPS_COPILOT_AGENT],
+        strategies: COPILOT_STRATEGIES,
+        // Tools register themselves: they need application services, which do not
+        // exist yet when this factory runs.
+        chat: {
+          replayWindow: config.get('REPLAY_WINDOW', { infer: true }),
+          consolidateAfterMessages: config.get('CONSOLIDATE_AFTER_MESSAGES', { infer: true }),
+          maxToolRounds: config.get('COPILOT_MAX_TOOL_CALLS_PER_TURN', { infer: true }),
+        },
+      }),
+    }),
+    CopilotModule,
   ],
   providers: [
     // Global guards run in this order: a flood is rejected before any token work,

@@ -27,10 +27,11 @@ export default tseslint.config(
     },
   },
 
-  // The copilot reaches data only through application services — never SQL or repositories.
+  // The copilot reaches data only through application services — never SQL or
+  // repositories. Scoped to application/ and http/: `copilot.module.ts` binds the
+  // proposal port to its implementation, which is composition, not data access.
   {
-    files: ['apps/api/src/modules/copilot/**/*.ts'],
-    ignores: ['apps/api/src/modules/copilot/infrastructure/**'],
+    files: ['apps/api/src/modules/copilot/application/**/*.ts', 'apps/api/src/modules/copilot/http/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Tx } from '../../../platform/database/tx';
-import type { StockMove } from '../domain/inventory';
+import type { RecordedMove, StockMove } from '../domain/inventory';
 import type { TxnType } from '../domain/inventory-transaction';
 import { InventoryRepository } from './ports/inventory.repository';
 import { LedgerRepository } from './ports/ledger.repository';
@@ -34,7 +34,7 @@ export class StockMovementService {
     tx: Tx,
     input: { productId: string; warehouseId: string; delta: number },
     ctx: MoveContext = {},
-  ): Promise<StockMove | null> {
+  ): Promise<RecordedMove | null> {
     const move = await this.inventory.adjustAtomic(tx, input.productId, input.warehouseId, input.delta);
     return this.record(tx, move, 'manual_adjustment', Math.abs(input.delta), ctx);
   }
@@ -44,7 +44,7 @@ export class StockMovementService {
     tx: Tx,
     input: { productId: string; warehouseId: string; qty: number },
     ctx: MoveContext = {},
-  ): Promise<StockMove | null> {
+  ): Promise<RecordedMove | null> {
     const move = await this.inventory.reserveAtomic(tx, input.productId, input.warehouseId, input.qty);
     return this.record(tx, move, 'reserve', input.qty, ctx);
   }
@@ -54,7 +54,7 @@ export class StockMovementService {
     tx: Tx,
     input: { inventoryId: string; qty: number },
     ctx: MoveContext = {},
-  ): Promise<StockMove | null> {
+  ): Promise<RecordedMove | null> {
     const move = await this.inventory.releaseAtomic(tx, input.inventoryId, input.qty);
     return this.record(tx, move, 'release', input.qty, ctx);
   }
@@ -64,7 +64,7 @@ export class StockMovementService {
     tx: Tx,
     input: { inventoryId: string; qty: number },
     ctx: MoveContext = {},
-  ): Promise<StockMove | null> {
+  ): Promise<RecordedMove | null> {
     const move = await this.inventory.consumeAtomic(tx, input.inventoryId, input.qty);
     return this.record(tx, move, 'consume', input.qty, ctx);
   }
@@ -75,9 +75,9 @@ export class StockMovementService {
     txnType: TxnType,
     quantity: number,
     ctx: MoveContext,
-  ): Promise<StockMove | null> {
+  ): Promise<RecordedMove | null> {
     if (!move) return null;
-    await this.ledger.append(tx, {
+    const entry = await this.ledger.append(tx, {
       inventoryId: move.inventoryId,
       productId: move.productId,
       warehouseId: move.warehouseId,
@@ -92,6 +92,6 @@ export class StockMovementService {
       orderId: ctx.orderId ?? null,
       reservationId: ctx.reservationId ?? null,
     });
-    return move;
+    return { ...move, transactionId: entry.id };
   }
 }

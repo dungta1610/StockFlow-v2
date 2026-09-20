@@ -31,6 +31,6 @@ import { SqlLedgerRepository } from './infrastructure/sql-ledger.repository';
   ],
   // The repositories stay inside the module: stock moves only through
   // StockMovementService, which always writes the ledger row with the movement.
-  exports: [StockMovementService, InventoryService, LedgerService],
+  exports: [StockMovementService, InventoryService, LedgerService, AdjustStockUseCase],
 })
 export class InventoryModule {}

@@ -65,6 +65,6 @@ import { SqlUserRepository } from './infrastructure/sql-user.repository';
   ],
   // The global auth guards (registered in AppModule) need the token service;
   // pricing and ordering look up customer organisations.
-  exports: [AccessTokenService, OrganizationRepository],
+  exports: [AccessTokenService, OrganizationRepository, UserRepository],
 })
 export class IdentityModule {}

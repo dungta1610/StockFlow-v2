@@ -8,6 +8,11 @@ import { InventoryErrors } from '../../domain/errors';
 import { InventoryRepository } from '../ports/inventory.repository';
 import { StockMovementService } from '../stock-movement.service';
 
+/** The stock row after an adjustment, plus the ledger entry that recorded it. */
+export interface AdjustedStock extends InventoryDetail {
+  transactionId: string;
+}
+
 /**
  * Ported from StockFlow biz/adjust_stock.go. The movement and its ledger row happen
  * together in the caller's transaction (see StockMovementService), so stock cannot
@@ -25,7 +30,7 @@ export class AdjustStockUseCase {
     tx: Tx,
     actor: Actor,
     input: { productId: string; warehouseId: string; quantity: number; reason: string },
-  ): Promise<InventoryDetail> {
+  ): Promise<AdjustedStock> {
     assertRole(actor, 'ops', 'ops_admin');
     const { quantity } = input;
     if (!Number.isSafeInteger(quantity) || quantity === 0) throw InventoryErrors.invalidAdjustment();
@@ -49,6 +54,8 @@ export class AdjustStockUseCase {
 
     const detail = await this.inventory.findById(tx, move.inventoryId);
     if (!detail) throw InventoryErrors.inventoryNotFound();
-    return detail;
+    // The ledger row comes back with the detail so a caller that has to point at
+    // the exact entry this produced does not have to guess which one it was.
+    return { ...detail, transactionId: move.transactionId };
   }
 }

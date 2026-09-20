@@ -98,6 +98,11 @@ services:
       DATABASE_URL: *db-url
       REDIS_URL: redis://redis:6379
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      # Inside the network the gateway is a service name, not localhost. The API
+      # boots whether or not LiteLLM is up — only copilot turns fail, and they fail
+      # with a message rather than at startup.
+      LITELLM_BASE_URL: http://litellm:4000
+      LITELLM_API_KEY: ${LITELLM_API_KEY:-sk-stockflow-dev-change-me}
     ports:
       - "127.0.0.1:${API_PORT:-3100}:3000"
     depends_on:
